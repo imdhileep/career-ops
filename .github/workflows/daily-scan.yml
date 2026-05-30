@@ -43,16 +43,17 @@ jobs:
           PIPELINE_MD: ${{ secrets.PIPELINE_MD }}
           BATCH_INPUT_TSV: ${{ secrets.BATCH_INPUT_TSV }}
         run: |
-          echo "$CV_MD"            | base64 -d > cv.md
-          echo "$PROFILE_YML"      | base64 -d > config/profile.yml
-          echo "$PORTALS_YML"      | base64 -d > portals.yml
-          echo "$PROFILE_MD"       | base64 -d > modes/_profile.md
+          # Secrets are gzip+base64 encoded (base64 alone exceeds GitHub's 48KB/secret limit for large files)
+          echo "$CV_MD"            | base64 -d | gunzip > cv.md
+          echo "$PROFILE_YML"      | base64 -d | gunzip > config/profile.yml
+          echo "$PORTALS_YML"      | base64 -d | gunzip > portals.yml
+          echo "$PROFILE_MD"       | base64 -d | gunzip > modes/_profile.md
           mkdir -p data batch/tracker-additions batch/logs
           # restore state files if they exist in secrets
-          [ -n "$SCAN_HISTORY" ]    && echo "$SCAN_HISTORY"    | base64 -d > data/scan-history.tsv    || echo -e "url\tfirst_seen\tportal\ttitle\tcompany\tstatus\tlocation" > data/scan-history.tsv
-          [ -n "$APPLICATIONS_MD" ] && echo "$APPLICATIONS_MD" | base64 -d > data/applications.md     || echo -e "# Applications Tracker\n\n| # | Date | Company | Role | Score | Status | PDF | Report | Notes |\n|---|------|---------|------|-------|--------|-----|--------|-------|" > data/applications.md
-          [ -n "$PIPELINE_MD" ]     && echo "$PIPELINE_MD"     | base64 -d > data/pipeline.md         || echo -e "# Pipeline — Pending URLs\n\n## Pendientes\n\n## Procesadas" > data/pipeline.md
-          [ -n "$BATCH_INPUT_TSV" ] && echo "$BATCH_INPUT_TSV" | base64 -d > batch/batch-input.tsv    || echo -e "id\turl\tsource\tnotes" > batch/batch-input.tsv
+          [ -n "$SCAN_HISTORY" ]    && echo "$SCAN_HISTORY"    | base64 -d | gunzip > data/scan-history.tsv    || echo -e "url\tfirst_seen\tportal\ttitle\tcompany\tstatus\tlocation" > data/scan-history.tsv
+          [ -n "$APPLICATIONS_MD" ] && echo "$APPLICATIONS_MD" | base64 -d | gunzip > data/applications.md     || echo -e "# Applications Tracker\n\n| # | Date | Company | Role | Score | Status | PDF | Report | Notes |\n|---|------|---------|------|-------|--------|-----|--------|-------|" > data/applications.md
+          [ -n "$PIPELINE_MD" ]     && echo "$PIPELINE_MD"     | base64 -d | gunzip > data/pipeline.md         || echo -e "# Pipeline — Pending URLs\n\n## Pendientes\n\n## Procesadas" > data/pipeline.md
+          [ -n "$BATCH_INPUT_TSV" ] && echo "$BATCH_INPUT_TSV" | base64 -d | gunzip > batch/batch-input.tsv    || echo -e "id\turl\tsource\tnotes" > batch/batch-input.tsv
 
       - name: Run portal scan
         env:
@@ -92,10 +93,11 @@ jobs:
       - name: Encode updated state files as outputs
         id: encode
         run: |
-          echo "scan_history=$(base64 -w0 data/scan-history.tsv)"    >> "$GITHUB_OUTPUT"
-          echo "applications=$(base64 -w0 data/applications.md)"     >> "$GITHUB_OUTPUT"
-          echo "pipeline=$(base64 -w0 data/pipeline.md)"             >> "$GITHUB_OUTPUT"
-          echo "batch_input=$(base64 -w0 batch/batch-input.tsv)"     >> "$GITHUB_OUTPUT"
+          # gzip+base64 to stay under GitHub's 48KB/secret limit (matches the restore step)
+          echo "scan_history=$(gzip -c data/scan-history.tsv | base64 -w0)"    >> "$GITHUB_OUTPUT"
+          echo "applications=$(gzip -c data/applications.md  | base64 -w0)"    >> "$GITHUB_OUTPUT"
+          echo "pipeline=$(gzip -c data/pipeline.md          | base64 -w0)"    >> "$GITHUB_OUTPUT"
+          echo "batch_input=$(gzip -c batch/batch-input.tsv  | base64 -w0)"    >> "$GITHUB_OUTPUT"
 
       - name: Update secrets with new state
         env:
