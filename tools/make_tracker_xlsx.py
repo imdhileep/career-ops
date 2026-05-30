@@ -19,6 +19,18 @@ REPORTS = os.path.join(ROOT, "reports")
 OUT = os.path.join(ROOT, "data", "applications.xlsx")
 CV = os.path.join(ROOT, "cv.md")
 BASE_PDF = os.path.join(ROOT, "output", "resume-base.pdf")
+STATUS_FILE = os.path.join(ROOT, "data", "applied-status.tsv")
+
+
+def load_status():
+    """num(str) -> status, from data/applied-status.tsv (last write wins)."""
+    m = {}
+    if os.path.exists(STATUS_FILE):
+        for line in open(STATUS_FILE, encoding="utf-8"):
+            p = line.rstrip("\n").split("\t")
+            if len(p) >= 2 and p[0].isdigit():
+                m[p[0]] = p[1]
+    return m
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from generate_docx import build as build_docx  # noqa: E402
@@ -140,6 +152,7 @@ def ensure_job_pdf(row, base_ok):
 def main():
     rows = [parse_report(fp) for fp in glob.glob(os.path.join(REPORTS, "*.md"))]
     rows.sort(key=lambda r: r["num"])
+    status_map = load_status()
     base_ok = ensure_base_pdf()
     made = 0
     for r in rows:
@@ -186,7 +199,7 @@ def main():
         link(i, 9, row["report"], "report")
         ws.cell(i, 10, row["legitimacy"])
         ws.cell(i, 11, row["date"])
-        ws.cell(i, 12, "Evaluated")
+        ws.cell(i, 12, status_map.get(str(row["num"]), "Evaluated"))
         ws.cell(i, 13, row["note"])
 
     widths = [5, 18, 34, 8, 14, 46, 44, 8, 9, 18, 11, 11, 60]
@@ -220,7 +233,8 @@ def main():
                 hl(row["docx"], os.path.basename(row["docx"]) if row["docx"] else ""),
                 hl(row["pdf"], "PDF"),
                 hl(row["report"], "report"),
-                row["legitimacy"], row["date"], "Evaluated", row["note"],
+                row["legitimacy"], row["date"],
+                status_map.get(str(row["num"]), "Evaluated"), row["note"],
             ])
 
     # HTML tracker: opens in a browser where file:// links to local PDFs/docx
@@ -240,6 +254,7 @@ def main():
             f"<td>{row['num']}</td><td>{_html.escape(row['company'])}</td>"
             f"<td>{_html.escape(row['role'])}</td><td class=sc>{_html.escape(row['score'])}</td>"
             f"<td>{_html.escape(row['decision'])}</td>"
+            f"<td>{_html.escape(status_map.get(str(row['num']), 'Evaluated'))}</td>"
             f"<td>{a(row['url'],'🔗 job', is_url=True)}</td>"
             f"<td>{a(row['docx'],'📝 docx')}</td>"
             f"<td>{a(row['pdf'],'📄 pdf')}</td>"
@@ -258,7 +273,7 @@ def main():
         f"<h1>career-ops — {len(rows)} roles</h1>"
         f'<div class=bar><a href="{out_dir_url}">📁 Open resumes folder</a></div>'
         "<table><tr><th>#</th><th>Company</th><th>Role</th><th>Score</th><th>Decision</th>"
-        "<th>Job</th><th>Resume</th><th>PDF</th><th>Report</th><th>Notes</th></tr>"
+        "<th>Status</th><th>Job</th><th>Resume</th><th>PDF</th><th>Report</th><th>Notes</th></tr>"
         + "".join(trs) + "</table>"
     )
     html_path = OUT[:-5] + ".html"

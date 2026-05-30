@@ -61,3 +61,8 @@ batch/batch-runner.pid
 *.bak2
 data/applications.csv
 data/applications.html
+
+# Python bytecode
+__pycache__/
+data/apply-worklist.csv
+data/applied-status.tsv
