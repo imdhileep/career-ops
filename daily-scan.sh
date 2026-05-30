@@ -95,6 +95,15 @@ fi
 log "Merging tracker..."
 node merge-tracker.mjs >> "$LOG" 2>&1 || log "WARN: merge-tracker.mjs failed"
 
+# Step 4b: refresh Excel tracker + base resume .docx (auto-update)
+if [[ -x .venv/bin/python ]]; then
+  log "Refreshing resume .docx + Excel tracker..."
+  .venv/bin/python tools/generate_docx.py >> "$LOG" 2>&1 || log "WARN: generate_docx.py failed"
+  .venv/bin/python tools/make_tracker_xlsx.py >> "$LOG" 2>&1 || log "WARN: make_tracker_xlsx.py failed"
+else
+  log "WARN: .venv missing — skipping xlsx/docx refresh (run: python3 -m venv .venv && .venv/bin/pip install openpyxl python-docx)"
+fi
+
 # Step 5: notify Slack with a run summary
 notify_slack
 
