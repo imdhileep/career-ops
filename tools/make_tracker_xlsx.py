@@ -23,13 +23,23 @@ STATUS_FILE = os.path.join(ROOT, "data", "applied-status.tsv")
 
 
 def load_status():
-    """num(str) -> status, from data/applied-status.tsv (last write wins)."""
+    """num(str) -> status. Merges two sources so either keeps the tracker live:
+    1) the apply-worklist.csv `status` column (Chrome may write it directly),
+    2) data/applied-status.tsv from mark_applied.py (authoritative on conflict).
+    """
     m = {}
+    wl = os.path.join(ROOT, "data", "apply-worklist.csv")
+    if os.path.exists(wl):
+        import csv as _csv
+        for r in _csv.DictReader(open(wl, encoding="utf-8")):
+            s = (r.get("status") or "").strip()
+            if s and (r.get("num") or "").isdigit():
+                m[r["num"]] = s
     if os.path.exists(STATUS_FILE):
         for line in open(STATUS_FILE, encoding="utf-8"):
             p = line.rstrip("\n").split("\t")
             if len(p) >= 2 and p[0].isdigit():
-                m[p[0]] = p[1]
+                m[p[0]] = p[1]  # marker file wins
     return m
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
