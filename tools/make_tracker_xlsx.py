@@ -1,25 +1,38 @@
 #!/usr/bin/env python3
-"""Build an Excel tracker (data/applications.xlsx) from reports/ + applications.md.
+"""Build an Excel + CSV tracker from reports/, with a per-job Word resume.
 
-Columns: #, Date, Company, Role, Score, Decision, Legitimacy, Status,
-Job URL, Report (JD details), Resume (PDF), Resume (.docx), Notes.
+For each evaluated role this:
+  - parses the report (Machine Summary + header) for company/role/score/URL/PDF,
+  - ensures a per-job .docx resume exists at
+      output/resume-{num:03d}-{company-slug}-{role-slug}.docx
+    (generated from cv.md; this name is the row's primary key — it ties the
+    job title to its resume file and is easy to find in output/),
+  - writes data/applications.xlsx and data/applications.csv with Job URL,
+    Resume (.docx) and Resume (PDF) columns adjacent for quick access.
 
-URL / report / PDF / docx cells are clickable hyperlinks. Re-runnable: safe to
-call after every batch/merge to refresh. Zero LLM cost — pure parsing.
+Re-runnable and idempotent (existing .docx are not regenerated). Zero LLM cost.
 """
 import os, re, glob, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 REPORTS = os.path.join(ROOT, "reports")
 OUT = os.path.join(ROOT, "data", "applications.xlsx")
+CV = os.path.join(ROOT, "cv.md")
 
-from openpyxl import Workbook
-from openpyxl.styles import Font, PatternFill, Alignment
-from openpyxl.utils import get_column_letter
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from generate_docx import build as build_docx  # noqa: E402
+from openpyxl import Workbook  # noqa: E402
+from openpyxl.styles import Font, PatternFill, Alignment  # noqa: E402
+from openpyxl.utils import get_column_letter  # noqa: E402
 
 HEADER_RE = lambda k: re.compile(r"^\*\*%s:\*\*\s*(.+?)\s*$" % k, re.M)
 H1_RE = re.compile(r"^#\s*Evaluation:\s*(.+?)\s*$", re.M)
 MS_RE = re.compile(r"```yaml\s*(.*?)```", re.S)
+
+
+def slug(s, maxlen=40):
+    s = re.sub(r"[^a-z0-9]+", "-", (s or "").lower()).strip("-")
+    return s[:maxlen].strip("-") or "na"
 
 
 def ms_value(ms, key):
@@ -28,16 +41,13 @@ def ms_value(ms, key):
 
 
 def ms_first_list_item(ms, key):
-    # grab the first "- item" line under a "key:" block
     m = re.search(r'^%s:\s*\n((?:\s*-\s*.+\n?)+)' % re.escape(key), ms, re.M)
     if not m:
         return ""
-    first = m.group(1).splitlines()[0]
-    return re.sub(r'^\s*-\s*"?(.*?)"?\s*$', r"\1", first)
+    return re.sub(r'^\s*-\s*"?(.*?)"?\s*$', r"\1", m.group(1).splitlines()[0])
 
 
 def rel(path):
-    """Normalize a report's stored path to repo-relative (strip leading career-ops/)."""
     path = path.strip().lstrip("/")
     if path.startswith("career-ops/"):
         path = path[len("career-ops/"):]
@@ -66,46 +76,54 @@ def parse_report(fp):
         role = ms_value(ms, "role") or role
 
     score = (hdr("Score") or (ms_value(ms, "score") + "/5")).replace("/5/5", "/5")
-    decision = ms_value(ms, "final_decision")
-    note = ms_value(ms, "next_action") or ms_first_list_item(ms, "hard_stops")
-    pdf = rel(hdr("PDF"))
-    docx = pdf[:-4] + ".docx" if pdf.endswith(".pdf") else ""
     return {
         "num": num,
         "date": hdr("Date"),
         "company": company,
         "role": role,
         "score": score,
-        "decision": decision,
+        "decision": ms_value(ms, "final_decision"),
         "legitimacy": hdr("Legitimacy"),
         "url": hdr("URL"),
         "report": os.path.relpath(fp, ROOT),
-        "pdf": pdf,
-        "docx": docx,
-        "note": note,
+        "pdf": rel(hdr("PDF")),
+        "note": ms_value(ms, "next_action") or ms_first_list_item(ms, "hard_stops"),
     }
+
+
+def ensure_job_docx(row):
+    """Per-job resume path = the primary key. Generate from cv.md if missing."""
+    name = "resume-%03d-%s-%s.docx" % (row["num"], slug(row["company"], 24), slug(row["role"]))
+    relpath = os.path.join("output", name)
+    abspath = os.path.join(ROOT, relpath)
+    if not os.path.exists(abspath) and os.path.exists(CV):
+        try:
+            build_docx(CV, abspath)
+        except Exception as e:  # noqa: BLE001
+            print(f"  warn: docx for #{row['num']} failed: {e}", file=sys.stderr)
+            return ""
+    return relpath
 
 
 def main():
     rows = [parse_report(fp) for fp in glob.glob(os.path.join(REPORTS, "*.md"))]
     rows.sort(key=lambda r: r["num"])
-
-    # Fallback for the .docx column: if no per-job Word file exists yet, link the
-    # editable base resume so the column is always usable.
-    base_docx = ""
-    for cand in sorted(glob.glob(os.path.join(ROOT, "output", "resume-*.docx"))):
-        base_docx = os.path.relpath(cand, ROOT)
-        break
+    made = 0
     for r in rows:
-        if not (r["docx"] and os.path.exists(os.path.join(ROOT, r["docx"]))):
-            r["docx"] = base_docx
+        before = os.path.join(ROOT, "output",
+                              "resume-%03d-%s-%s.docx" % (r["num"], slug(r["company"], 24), slug(r["role"])))
+        existed = os.path.exists(before)
+        r["docx"] = ensure_job_docx(r)
+        if r["docx"] and not existed:
+            made += 1
+
+    cols = ["#", "Company", "Role", "Score", "Decision", "Job URL",
+            "Resume (.docx)", "Resume (PDF)", "Report (JD details)",
+            "Legitimacy", "Date", "Status", "Notes"]
 
     wb = Workbook()
     ws = wb.active
     ws.title = "Applications"
-    cols = ["#", "Date", "Company", "Role", "Score", "Decision", "Legitimacy",
-            "Status", "Job URL", "Report (JD details)", "Resume (PDF)",
-            "Resume (.docx)", "Notes"]
     ws.append(cols)
     head_fill = PatternFill("solid", fgColor="1F2A44")
     for c in range(1, len(cols) + 1):
@@ -113,36 +131,67 @@ def main():
         cell.font = Font(bold=True, color="FFFFFF")
         cell.fill = head_fill
         cell.alignment = Alignment(vertical="center")
-    ws.freeze_panes = "A2"
+    ws.freeze_panes = "B2"
 
-    def link(ws, r, c, target, text, is_url=False):
+    def fileurl(relpath):
+        return "file://" + os.path.join(ROOT, relpath)
+
+    def link(r, c, target, text, is_url=False):
         cell = ws.cell(r, c, text or "")
-        if target:
-            cell.hyperlink = target if is_url else os.path.join(ROOT, target)
+        if target and (is_url or os.path.exists(os.path.join(ROOT, target))):
+            cell.hyperlink = target if is_url else fileurl(target)
             cell.font = Font(color="0563C1", underline="single")
 
     for i, row in enumerate(rows, start=2):
         ws.cell(i, 1, row["num"])
-        ws.cell(i, 2, row["date"])
-        ws.cell(i, 3, row["company"])
-        ws.cell(i, 4, row["role"])
-        ws.cell(i, 5, row["score"])
-        ws.cell(i, 6, row["decision"])
-        ws.cell(i, 7, row["legitimacy"])
-        ws.cell(i, 8, "Evaluated")
-        link(ws, i, 9, row["url"], row["url"], is_url=True)
-        link(ws, i, 10, row["report"], "report")
-        link(ws, i, 11, row["pdf"] if os.path.exists(os.path.join(ROOT, row["pdf"])) else "", "PDF")
-        link(ws, i, 12, row["docx"] if os.path.exists(os.path.join(ROOT, row["docx"])) else "", ".docx")
+        ws.cell(i, 2, row["company"])
+        ws.cell(i, 3, row["role"])
+        ws.cell(i, 4, row["score"])
+        ws.cell(i, 5, row["decision"])
+        link(i, 6, row["url"], row["url"], is_url=True)
+        link(i, 7, row["docx"], os.path.basename(row["docx"]) if row["docx"] else "")
+        link(i, 8, row["pdf"], "PDF")
+        link(i, 9, row["report"], "report")
+        ws.cell(i, 10, row["legitimacy"])
+        ws.cell(i, 11, row["date"])
+        ws.cell(i, 12, "Evaluated")
         ws.cell(i, 13, row["note"])
 
-    widths = [5, 11, 18, 34, 8, 9, 16, 11, 46, 16, 13, 13, 60]
+    widths = [5, 18, 34, 8, 14, 46, 44, 8, 9, 18, 11, 11, 60]
     for c, w in enumerate(widths, start=1):
         ws.column_dimensions[get_column_letter(c)].width = w
 
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     wb.save(OUT)
-    print(f"wrote {OUT} — {len(rows)} rows")
+
+    # CSV: emit =HYPERLINK() formulas so links are clickable in Excel/Numbers.
+    # Web URL works everywhere; file:// links open only on this Mac (not in
+    # Google Sheets, where local files are blocked by design).
+    import csv
+
+    def hl(target, label, is_url=False):
+        if not target:
+            return ""
+        if not is_url and not os.path.exists(os.path.join(ROOT, target)):
+            return ""
+        url = target if is_url else "file://" + os.path.join(ROOT, target)
+        return '=HYPERLINK("%s","%s")' % (url.replace('"', "%22"), label.replace('"', "'"))
+
+    csv_path = OUT[:-5] + ".csv"
+    with open(csv_path, "w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        w.writerow(cols)
+        for row in rows:
+            w.writerow([
+                row["num"], row["company"], row["role"], row["score"], row["decision"],
+                hl(row["url"], "open", is_url=True),
+                hl(row["docx"], os.path.basename(row["docx"]) if row["docx"] else ""),
+                hl(row["pdf"], "PDF"),
+                hl(row["report"], "report"),
+                row["legitimacy"], row["date"], "Evaluated", row["note"],
+            ])
+
+    print(f"wrote {OUT} and {csv_path} — {len(rows)} rows; generated {made} new per-job .docx")
 
 
 if __name__ == "__main__":
