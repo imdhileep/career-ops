@@ -582,9 +582,11 @@ main() {
             running=$((running - 1))
           fi
         done
-        # Compact arrays
-        pids=("${pids[@]}")
-        pid_ids=("${pid_ids[@]}")
+        # Compact arrays (guard empty: "${arr[@]}" is unbound under set -u on bash 3.2)
+        if (( ${#pids[@]} )); then
+          pids=("${pids[@]}")
+          pid_ids=("${pid_ids[@]}")
+        fi
         sleep 1
       done
 
@@ -595,10 +597,12 @@ main() {
       running=$((running + 1))
     done
 
-    # Wait for remaining workers
-    for pid in "${pids[@]}"; do
-      wait "$pid" 2>/dev/null || true
-    done
+    # Wait for remaining workers (guard empty under set -u / bash 3.2)
+    if (( ${#pids[@]} )); then
+      for pid in "${pids[@]}"; do
+        wait "$pid" 2>/dev/null || true
+      done
+    fi
   fi
 
   # Merge tracker additions
