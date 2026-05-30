@@ -12,7 +12,7 @@ For each evaluated role this:
 
 Re-runnable and idempotent (existing .docx are not regenerated). Zero LLM cost.
 """
-import os, re, glob, sys, shutil, subprocess
+import os, re, glob, sys, shutil, subprocess, html as _html
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 REPORTS = os.path.join(ROOT, "reports")
@@ -223,7 +223,48 @@ def main():
                 row["legitimacy"], row["date"], "Evaluated", row["note"],
             ])
 
-    print(f"wrote {OUT} and {csv_path} — {len(rows)} rows; generated {made} new per-job .docx")
+    # HTML tracker: opens in a browser where file:// links to local PDFs/docx
+    # actually work (unlike sandboxed Excel / Numbers). This is the click-through view.
+    def a(target, label, is_url=False):
+        if not target:
+            return ""
+        if not is_url and not os.path.exists(os.path.join(ROOT, target)):
+            return ""
+        href = target if is_url else "file://" + os.path.join(ROOT, target)
+        return f'<a href="{href}"{" target=_blank" if is_url else ""}>{_html.escape(label)}</a>'
+
+    trs = []
+    for row in rows:
+        trs.append(
+            "<tr>"
+            f"<td>{row['num']}</td><td>{_html.escape(row['company'])}</td>"
+            f"<td>{_html.escape(row['role'])}</td><td class=sc>{_html.escape(row['score'])}</td>"
+            f"<td>{_html.escape(row['decision'])}</td>"
+            f"<td>{a(row['url'],'🔗 job', is_url=True)}</td>"
+            f"<td>{a(row['docx'],'📝 docx')}</td>"
+            f"<td>{a(row['pdf'],'📄 pdf')}</td>"
+            f"<td>{a(row['report'],'report')}</td>"
+            f"<td>{_html.escape(row['note'])}</td></tr>"
+        )
+    out_dir_url = "file://" + os.path.join(ROOT, "output")
+    html_doc = (
+        "<!doctype html><meta charset=utf-8><title>career-ops tracker</title>"
+        "<style>body{font:14px -apple-system,Segoe UI,sans-serif;margin:24px}"
+        "h1{font-size:20px}table{border-collapse:collapse;width:100%}"
+        "th,td{border-bottom:1px solid #ddd;padding:6px 8px;text-align:left;vertical-align:top}"
+        "th{position:sticky;top:0;background:#1F2A44;color:#fff}tr:nth-child(even){background:#f6f7f9}"
+        "td.sc{font-weight:700}a{color:#0563C1;text-decoration:none}a:hover{text-decoration:underline}"
+        ".bar{margin:8px 0 16px}.bar a{background:#1F2A44;color:#fff;padding:6px 10px;border-radius:6px}</style>"
+        f"<h1>career-ops — {len(rows)} roles</h1>"
+        f'<div class=bar><a href="{out_dir_url}">📁 Open resumes folder</a></div>'
+        "<table><tr><th>#</th><th>Company</th><th>Role</th><th>Score</th><th>Decision</th>"
+        "<th>Job</th><th>Resume</th><th>PDF</th><th>Report</th><th>Notes</th></tr>"
+        + "".join(trs) + "</table>"
+    )
+    html_path = OUT[:-5] + ".html"
+    open(html_path, "w", encoding="utf-8").write(html_doc)
+
+    print(f"wrote {OUT}, {csv_path}, {html_path} — {len(rows)} rows; generated {made} new per-job .docx")
 
 
 if __name__ == "__main__":
