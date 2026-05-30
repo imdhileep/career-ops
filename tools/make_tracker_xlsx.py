@@ -257,14 +257,26 @@ def main():
         href = target if is_url else "file://" + os.path.join(ROOT, target)
         return f'<a href="{href}"{" target=_blank" if is_url else ""}>{_html.escape(label)}</a>'
 
+    def applied_yn(s):
+        s = (s or "").lower()
+        if s in ("applied", "blocked"):
+            return "✅ Yes"
+        if s == "skipped":
+            return "⏭️ Skipped"
+        return "❌ No"
+
     trs = []
     for row in rows:
+        st = status_map.get(str(row["num"]), "Evaluated")
+        yn = applied_yn(st)
+        tr_cls = " class=applied" if yn.startswith("✅") else ""
         trs.append(
-            "<tr>"
+            f"<tr{tr_cls}>"
             f"<td>{row['num']}</td><td>{_html.escape(row['company'])}</td>"
             f"<td>{_html.escape(row['role'])}</td><td class=sc>{_html.escape(row['score'])}</td>"
             f"<td>{_html.escape(row['decision'])}</td>"
-            f"<td>{_html.escape(status_map.get(str(row['num']), 'Evaluated'))}</td>"
+            f"<td class=yn>{yn}</td>"
+            f"<td>{_html.escape(st)}</td>"
             f"<td>{a(row['url'],'🔗 job', is_url=True)}</td>"
             f"<td>{a(row['docx'],'📝 docx')}</td>"
             f"<td>{a(row['pdf'],'📄 pdf')}</td>"
@@ -278,12 +290,13 @@ def main():
         "h1{font-size:20px}table{border-collapse:collapse;width:100%}"
         "th,td{border-bottom:1px solid #ddd;padding:6px 8px;text-align:left;vertical-align:top}"
         "th{position:sticky;top:0;background:#1F2A44;color:#fff}tr:nth-child(even){background:#f6f7f9}"
-        "td.sc{font-weight:700}a{color:#0563C1;text-decoration:none}a:hover{text-decoration:underline}"
+        "td.sc{font-weight:700}td.yn{font-weight:700;white-space:nowrap}tr.applied{background:#e8f5e9!important}"
+"a{color:#0563C1;text-decoration:none}a:hover{text-decoration:underline}"
         ".bar{margin:8px 0 16px}.bar a{background:#1F2A44;color:#fff;padding:6px 10px;border-radius:6px}</style>"
         f"<h1>career-ops — {len(rows)} roles</h1>"
         f'<div class=bar><a href="{out_dir_url}">📁 Open resumes folder</a></div>'
         "<table><tr><th>#</th><th>Company</th><th>Role</th><th>Score</th><th>Decision</th>"
-        "<th>Status</th><th>Job</th><th>Resume</th><th>PDF</th><th>Report</th><th>Notes</th></tr>"
+        "<th>Applied?</th><th>Status</th><th>Job</th><th>Resume</th><th>PDF</th><th>Report</th><th>Notes</th></tr>"
         + "".join(trs) + "</table>"
     )
     html_path = OUT[:-5] + ".html"
