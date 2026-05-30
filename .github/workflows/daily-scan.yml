@@ -88,7 +88,8 @@ jobs:
       - name: Merge tracker
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: node merge-tracker.mjs || echo "merge-tracker: no new additions"
+        run: |
+          node merge-tracker.mjs || echo "merge-tracker: no new additions"
 
       - name: Encode updated state files as outputs
         id: encode
