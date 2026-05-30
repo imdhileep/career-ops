@@ -1,0 +1,140 @@
+name: Daily Job Scan
+
+on:
+  schedule:
+    - cron: '0 9 * * *'   # 4am CST (UTC-5) = 9am UTC
+  workflow_dispatch:        # allow manual trigger from GitHub UI
+
+jobs:
+  scan-and-evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
+
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Restore personal files from secrets
+        env:
+          CV_MD: ${{ secrets.CV_MD }}
+          PROFILE_YML: ${{ secrets.PROFILE_YML }}
+          PORTALS_YML: ${{ secrets.PORTALS_YML }}
+          PROFILE_MD: ${{ secrets.PROFILE_MD }}
+          SCAN_HISTORY: ${{ secrets.SCAN_HISTORY }}
+          APPLICATIONS_MD: ${{ secrets.APPLICATIONS_MD }}
+          PIPELINE_MD: ${{ secrets.PIPELINE_MD }}
+          BATCH_INPUT_TSV: ${{ secrets.BATCH_INPUT_TSV }}
+        run: |
+          echo "$CV_MD"            | base64 -d > cv.md
+          echo "$PROFILE_YML"      | base64 -d > config/profile.yml
+          echo "$PORTALS_YML"      | base64 -d > portals.yml
+          echo "$PROFILE_MD"       | base64 -d > modes/_profile.md
+          mkdir -p data batch/tracker-additions batch/logs
+          # restore state files if they exist in secrets
+          [ -n "$SCAN_HISTORY" ]    && echo "$SCAN_HISTORY"    | base64 -d > data/scan-history.tsv    || echo -e "url\tfirst_seen\tportal\ttitle\tcompany\tstatus\tlocation" > data/scan-history.tsv
+          [ -n "$APPLICATIONS_MD" ] && echo "$APPLICATIONS_MD" | base64 -d > data/applications.md     || echo -e "# Applications Tracker\n\n| # | Date | Company | Role | Score | Status | PDF | Report | Notes |\n|---|------|---------|------|-------|--------|-----|--------|-------|" > data/applications.md
+          [ -n "$PIPELINE_MD" ]     && echo "$PIPELINE_MD"     | base64 -d > data/pipeline.md         || echo -e "# Pipeline — Pending URLs\n\n## Pendientes\n\n## Procesadas" > data/pipeline.md
+          [ -n "$BATCH_INPUT_TSV" ] && echo "$BATCH_INPUT_TSV" | base64 -d > batch/batch-input.tsv    || echo -e "id\turl\tsource\tnotes" > batch/batch-input.tsv
+
+      - name: Run portal scan
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: node scan.mjs
+
+      - name: Sync pipeline → batch-input
+        run: |
+          MAX_ID=$(tail -n +2 batch/batch-input.tsv 2>/dev/null | awk -F'\t' 'NF>0 && $1~/^[0-9]+$/ {print $1+0}' | sort -n | tail -1)
+          MAX_ID=${MAX_ID:-0}
+          EXISTING_URLS=$(awk -F'\t' 'NR>1 {print $2}' batch/batch-input.tsv 2>/dev/null || true)
+          NEW_COUNT=0
+          while IFS= read -r line; do
+            if [[ "$line" =~ ^-\ \[\ \]\ (.+)\ \|\ (.+)\ \|\ (.+)$ ]]; then
+              url="${BASH_REMATCH[1]}"
+              company="${BASH_REMATCH[2]}"
+              title="${BASH_REMATCH[3]}"
+              if echo "$EXISTING_URLS" | grep -qF "$url"; then continue; fi
+              MAX_ID=$((MAX_ID + 1))
+              printf '%s\t%s\t%s\t%s\n' "$MAX_ID" "$url" "$company" "$title" >> batch/batch-input.tsv
+              NEW_COUNT=$((NEW_COUNT + 1))
+            fi
+          done < data/pipeline.md
+          echo "Added $NEW_COUNT new offers to batch-input.tsv"
+
+      - name: Run batch evaluation
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CLAUDE_CODE_USE_BEDROCK: '0'
+        run: bash batch/batch-runner.sh --parallel 2
+
+      - name: Merge tracker
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: node merge-tracker.mjs || echo "merge-tracker: no new additions"
+
+      - name: Encode updated state files as outputs
+        id: encode
+        run: |
+          echo "scan_history=$(base64 -w0 data/scan-history.tsv)"    >> "$GITHUB_OUTPUT"
+          echo "applications=$(base64 -w0 data/applications.md)"     >> "$GITHUB_OUTPUT"
+          echo "pipeline=$(base64 -w0 data/pipeline.md)"             >> "$GITHUB_OUTPUT"
+          echo "batch_input=$(base64 -w0 batch/batch-input.tsv)"     >> "$GITHUB_OUTPUT"
+
+      - name: Update secrets with new state
+        env:
+          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh secret set SCAN_HISTORY    --body "${{ steps.encode.outputs.scan_history }}"  -R "$REPO" || echo "WARN: could not update SCAN_HISTORY secret"
+          gh secret set APPLICATIONS_MD --body "${{ steps.encode.outputs.applications }}"  -R "$REPO" || echo "WARN: could not update APPLICATIONS_MD secret"
+          gh secret set PIPELINE_MD     --body "${{ steps.encode.outputs.pipeline }}"      -R "$REPO" || echo "WARN: could not update PIPELINE_MD secret"
+          gh secret set BATCH_INPUT_TSV --body "${{ steps.encode.outputs.batch_input }}"   -R "$REPO" || echo "WARN: could not update BATCH_INPUT_TSV secret"
+
+      - name: Upload reports as artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: reports-${{ github.run_id }}
+          path: |
+            reports/*.md
+            output/*.pdf
+          retention-days: 30
+
+      - name: Notify Slack
+        if: always() && env.SLACK_WEBHOOK_URL != ''
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          RUN_STATUS: ${{ job.status }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          STATE=batch/batch-state.tsv
+          completed=0; failed=0; total=0; top="  (none scored)"
+          if [ -f "$STATE" ]; then
+            total=$(awk -F'\t' 'NR>1 && NF>1' "$STATE" | wc -l | tr -d ' ')
+            completed=$(awk -F'\t' 'NR>1 && $3=="completed"' "$STATE" | wc -l | tr -d ' ')
+            failed=$(awk -F'\t' 'NR>1 && $3=="failed"' "$STATE" | wc -l | tr -d ' ')
+            t=$(awk -F'\t' 'NR>1 && $3=="completed" && $7!="-" && $7!="" {print $7"\t"$2}' "$STATE" \
+                | sort -rn | head -5 | awk -F'\t' '{printf "  • %s — %s\n", $1, $2}')
+            [ -n "$t" ] && top="$t"
+          fi
+          msg=$(printf '🔎 *career-ops daily scan* (%s) — <%s|run log>\nCompleted: %s | Failed: %s | Total tracked: %s\n\nTop offers this run:\n%s' \
+                "$RUN_STATUS" "$RUN_URL" "$completed" "$failed" "$total" "$top")
+          payload=$(node -e 'process.stdout.write(JSON.stringify({text:process.argv[1]}))' "$msg")
+          curl -fsS -X POST -H 'Content-type: application/json' --data "$payload" "$SLACK_WEBHOOK_URL" || echo "WARN: Slack notify failed"
