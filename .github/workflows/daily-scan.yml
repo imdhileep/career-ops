@@ -120,12 +120,13 @@ jobs:
           retention-days: 30
 
       - name: Notify Slack
-        if: always() && env.SLACK_WEBHOOK_URL != ''
+        if: always()
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           RUN_STATUS: ${{ job.status }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
+          [ -z "$SLACK_WEBHOOK_URL" ] && { echo "SLACK_WEBHOOK_URL not set, skipping"; exit 0; }
           STATE=batch/batch-state.tsv
           completed=0; failed=0; total=0; top="  (none scored)"
           if [ -f "$STATE" ]; then
