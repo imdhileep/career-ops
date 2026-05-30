@@ -23,11 +23,12 @@ STATUS_FILE = os.path.join(ROOT, "data", "applied-status.tsv")
 
 
 def load_status():
-    """num(str) -> status. Merges two sources so either keeps the tracker live:
+    """Returns (status_map, ts_map), num(str) -> status / ISO timestamp.
+    Merges two sources so either keeps the tracker live:
     1) the apply-worklist.csv `status` column (Chrome may write it directly),
-    2) data/applied-status.tsv from mark_applied.py (authoritative on conflict).
+    2) data/applied-status.tsv from mark_applied.py (authoritative; has timestamps).
     """
-    m = {}
+    m, ts = {}, {}
     wl = os.path.join(ROOT, "data", "apply-worklist.csv")
     if os.path.exists(wl):
         import csv as _csv
@@ -40,7 +41,9 @@ def load_status():
             p = line.rstrip("\n").split("\t")
             if len(p) >= 2 and p[0].isdigit():
                 m[p[0]] = p[1]  # marker file wins
-    return m
+                if len(p) >= 3:
+                    ts[p[0]] = p[2]
+    return m, ts
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from generate_docx import build as build_docx  # noqa: E402
@@ -162,7 +165,7 @@ def ensure_job_pdf(row, base_ok):
 def main():
     rows = [parse_report(fp) for fp in glob.glob(os.path.join(REPORTS, "*.md"))]
     rows.sort(key=lambda r: r["num"])
-    status_map = load_status()
+    status_map, ts_map = load_status()
     base_ok = ensure_base_pdf()
     made = 0
     for r in rows:
@@ -267,37 +270,64 @@ def main():
 
     trs = []
     for row in rows:
-        st = status_map.get(str(row["num"]), "Evaluated")
-        yn = applied_yn(st)
-        tr_cls = " class=applied" if yn.startswith("✅") else ""
+        num = str(row["num"])
+        st = status_map.get(num, "Evaluated")
+        checked = applied_yn(st).startswith("✅")
+        when = (ts_map.get(num, "") or "").replace("T", " ")[:16]
+        ap = (f'<input type=checkbox class=ap data-num="{num}" data-ts="{when}"'
+              f'{" checked" if checked else ""}> <span class=apd>{when}</span>')
         trs.append(
-            f"<tr{tr_cls}>"
+            f'<tr{" class=applied" if checked else ""}>'
             f"<td>{row['num']}</td><td>{_html.escape(row['company'])}</td>"
             f"<td>{_html.escape(row['role'])}</td><td class=sc>{_html.escape(row['score'])}</td>"
             f"<td>{_html.escape(row['decision'])}</td>"
-            f"<td class=yn>{yn}</td>"
+            f"<td class=yn>{ap}</td>"
             f"<td>{_html.escape(st)}</td>"
             f"<td>{a(row['url'],'🔗 job', is_url=True)}</td>"
             f"<td>{a(row['docx'],'📝 docx')}</td>"
             f"<td>{a(row['pdf'],'📄 pdf')}</td>"
             f"<td>{a(row['report'],'report')}</td>"
-            f"<td>{_html.escape(row['note'])}</td></tr>"
+            f"<td contenteditable class=note data-num=\"{num}\">{_html.escape(row['note'])}</td></tr>"
         )
     out_dir_url = "file://" + os.path.join(ROOT, "output")
+    js = r"""<script>
+const KEY='careerops-tracker';
+const store=JSON.parse(localStorage.getItem(KEY)||'{}');
+const save=()=>localStorage.setItem(KEY,JSON.stringify(store));
+const fmt=d=>{const p=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+' '+p(d.getHours())+':'+p(d.getMinutes());};
+function refresh(){let n=0;document.querySelectorAll('.ap').forEach(cb=>{const tr=cb.closest('tr');if(cb.checked){tr.classList.add('applied');n++}else tr.classList.remove('applied');});const c=document.getElementById('cnt');if(c)c.textContent=n;}
+document.querySelectorAll('.ap').forEach(cb=>{
+  const num=cb.dataset.num, span=cb.parentElement.querySelector('.apd'), rec=store[num]||{};
+  if('applied' in rec){cb.checked=rec.applied; span.textContent=rec.ts||'';}
+  else if(cb.checked){store[num]={...rec,applied:true,ts:cb.dataset.ts||''};}
+  cb.addEventListener('change',()=>{const ts=cb.checked?fmt(new Date()):'';store[num]={...(store[num]||{}),applied:cb.checked,ts};save();span.textContent=ts;refresh();});
+});
+document.querySelectorAll('td.note').forEach(td=>{const num=td.dataset.num, rec=store[num]||{};if('note' in rec)td.textContent=rec.note;td.addEventListener('blur',()=>{store[num]={...(store[num]||{}),note:td.textContent};save();});});
+save();refresh();
+function exportApplied(){const lines=Object.keys(store).filter(k=>store[k].applied).sort((a,b)=>a-b).map(k=>k+'\tapplied\t'+(store[k].ts||''));const blob=new Blob([lines.join('\n')+'\n'],{type:'text/plain'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='applied-status.tsv';document.body.appendChild(a);a.click();a.remove();}
+window.exportApplied=exportApplied;
+</script>"""
     html_doc = (
         "<!doctype html><meta charset=utf-8><title>career-ops tracker</title>"
         "<style>body{font:14px -apple-system,Segoe UI,sans-serif;margin:24px}"
         "h1{font-size:20px}table{border-collapse:collapse;width:100%}"
         "th,td{border-bottom:1px solid #ddd;padding:6px 8px;text-align:left;vertical-align:top}"
         "th{position:sticky;top:0;background:#1F2A44;color:#fff}tr:nth-child(even){background:#f6f7f9}"
-        "td.sc{font-weight:700}td.yn{font-weight:700;white-space:nowrap}tr.applied{background:#e8f5e9!important}"
-"a{color:#0563C1;text-decoration:none}a:hover{text-decoration:underline}"
-        ".bar{margin:8px 0 16px}.bar a{background:#1F2A44;color:#fff;padding:6px 10px;border-radius:6px}</style>"
+        "td.sc{font-weight:700}td.yn{white-space:nowrap}.ap{transform:scale(1.25);cursor:pointer}"
+        ".apd{color:#666;font-size:11px}tr.applied{background:#e8f5e9!important}"
+        "td.note{min-width:200px}td.note:focus{outline:2px solid #1F2A44;background:#fff}"
+        "a{color:#0563C1;text-decoration:none}a:hover{text-decoration:underline}"
+        ".bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:8px 0 16px}"
+        ".bar a,.bar button{background:#1F2A44;color:#fff;padding:6px 10px;border-radius:6px;border:0;cursor:pointer;font:inherit}"
+        ".bar .hint{background:none;color:#666;font-size:12px;padding:0}</style>"
         f"<h1>career-ops — {len(rows)} roles</h1>"
-        f'<div class=bar><a href="{out_dir_url}">📁 Open resumes folder</a></div>'
+        f'<div class=bar><a href="{out_dir_url}">📁 Open resumes folder</a>'
+        '<span class=hint>✅ Applied: <b id=cnt>0</b></span>'
+        '<button onclick=exportApplied()>⬇ Export applied (.tsv)</button>'
+        '<span class=hint>tick a box to mark applied (auto-dates) · edit Notes inline · saves in this browser</span></div>'
         "<table><tr><th>#</th><th>Company</th><th>Role</th><th>Score</th><th>Decision</th>"
-        "<th>Applied?</th><th>Status</th><th>Job</th><th>Resume</th><th>PDF</th><th>Report</th><th>Notes</th></tr>"
-        + "".join(trs) + "</table>"
+        "<th>Applied?</th><th>Status</th><th>Job</th><th>Resume</th><th>PDF</th><th>Report</th><th>Notes (editable)</th></tr>"
+        + "".join(trs) + "</table>" + js
     )
     html_path = OUT[:-5] + ".html"
     open(html_path, "w", encoding="utf-8").write(html_doc)
