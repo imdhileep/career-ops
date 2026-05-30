@@ -12,12 +12,13 @@ For each evaluated role this:
 
 Re-runnable and idempotent (existing .docx are not regenerated). Zero LLM cost.
 """
-import os, re, glob, sys
+import os, re, glob, sys, shutil, subprocess
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 REPORTS = os.path.join(ROOT, "reports")
 OUT = os.path.join(ROOT, "data", "applications.xlsx")
 CV = os.path.join(ROOT, "cv.md")
+BASE_PDF = os.path.join(ROOT, "output", "resume-base.pdf")
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from generate_docx import build as build_docx  # noqa: E402
@@ -91,10 +92,28 @@ def parse_report(fp):
     }
 
 
+def job_stem(row):
+    return "resume-%03d-%s-%s" % (row["num"], slug(row["company"], 24), slug(row["role"]))
+
+
+def ensure_base_pdf():
+    """Render the base resume PDF once (cv.md -> HTML -> generate-pdf.mjs)."""
+    if os.path.exists(BASE_PDF):
+        return True
+    try:
+        html = "/tmp/resume-base.html"
+        subprocess.run([sys.executable, os.path.join(os.path.dirname(__file__), "md_to_html.py"),
+                        CV, html], check=True, cwd=ROOT)
+        subprocess.run(["node", "generate-pdf.mjs", html, BASE_PDF], check=True, cwd=ROOT)
+        return os.path.exists(BASE_PDF)
+    except Exception as e:  # noqa: BLE001
+        print(f"  warn: base PDF render failed: {e}", file=sys.stderr)
+        return False
+
+
 def ensure_job_docx(row):
     """Per-job resume path = the primary key. Generate from cv.md if missing."""
-    name = "resume-%03d-%s-%s.docx" % (row["num"], slug(row["company"], 24), slug(row["role"]))
-    relpath = os.path.join("output", name)
+    relpath = os.path.join("output", job_stem(row) + ".docx")
     abspath = os.path.join(ROOT, relpath)
     if not os.path.exists(abspath) and os.path.exists(CV):
         try:
@@ -105,15 +124,28 @@ def ensure_job_docx(row):
     return relpath
 
 
+def ensure_job_pdf(row, base_ok):
+    """Per-job PDF mirrors the .docx name; copy from the base render if missing."""
+    relpath = os.path.join("output", job_stem(row) + ".pdf")
+    abspath = os.path.join(ROOT, relpath)
+    if not os.path.exists(abspath) and base_ok:
+        try:
+            shutil.copyfile(BASE_PDF, abspath)
+        except Exception as e:  # noqa: BLE001
+            print(f"  warn: pdf for #{row['num']} failed: {e}", file=sys.stderr)
+            return ""
+    return relpath if os.path.exists(abspath) else ""
+
+
 def main():
     rows = [parse_report(fp) for fp in glob.glob(os.path.join(REPORTS, "*.md"))]
     rows.sort(key=lambda r: r["num"])
+    base_ok = ensure_base_pdf()
     made = 0
     for r in rows:
-        before = os.path.join(ROOT, "output",
-                              "resume-%03d-%s-%s.docx" % (r["num"], slug(r["company"], 24), slug(r["role"])))
-        existed = os.path.exists(before)
+        existed = os.path.exists(os.path.join(ROOT, "output", job_stem(r) + ".docx"))
         r["docx"] = ensure_job_docx(r)
+        r["pdf"] = ensure_job_pdf(r, base_ok)
         if r["docx"] and not existed:
             made += 1
 
