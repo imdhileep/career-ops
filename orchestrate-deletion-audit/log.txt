@@ -72,3 +72,23 @@ branch=main
 repo_root=/home/user/orchestrate/hackerrank-orchestrate-october26
 worktree=main
 parent_agent=none
+
+## [2026-10-25T10:15:00Z] Remove assistant name from deliverables; submission request
+
+User Prompt (verbatim, secrets redacted):
+Don't mention Claude anywhere / Submit
+
+Agent Response Summary:
+Removed the assistant name and vendor model ids from code, README, prompts and reports (live model calls now take model ids from environment variables), re-ran the pipeline and evaluation (results unchanged) and rebuilt code.zip. The log's mandatory tool=/model= fields were kept as AGENTS.md requires. Submission cannot be performed by the agent (hackerrank.com is blocked from the sandbox and upload requires the participant's account), so the user was given the upload mapping.
+
+Actions:
+* Edited README.md, code/agent/{media,intent,usage}.py, code/agent/media_cache.json, code/prompts/*.md, code/evaluation/usage_report.md
+* python3 code/main.py; python3 code/evaluation/main.py --write; rebuilt code.zip
+
+Context:
+tool=Claude Code
+model=claude-opus-5-5
+branch=main
+repo_root=/home/user/orchestrate/hackerrank-orchestrate-october26
+worktree=main
+parent_agent=none
