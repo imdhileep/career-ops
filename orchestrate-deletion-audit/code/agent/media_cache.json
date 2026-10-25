@@ -1,0 +1,118 @@
+{
+  "_about": "Structured transcriptions of the screenshot / PDF evidence. Produced once with Claude vision (see prompts/media_extraction.md) and cached so the full run is deterministic and needs no API key. Keys are sha256 prefixes of the file bytes; if a file changes the cache misses and media.py falls back to a live model call (when ANTHROPIC_API_KEY is set) or to text-only extraction.",
+  "d5c32ca5b6e1a2b4": {
+    "file": "images/account_admin_console_20260926.png",
+    "summary": "Customer Operations console showing live customer profile Haruka Sato (user_11, account_5762), Silver tier, email haruka.s1838@zoho.com, phone +81 90 7610 2507, two orders, support case CS-8538 / support_9538, last contact 24 Sep 2026.",
+    "records": [
+      {"system": "account_service", "resource_id": "account_5762", "record_type": "USER_PROFILE", "result": "FOUND", "customer_reference": "user_11", "full_name": "Haruka Sato", "email": "haruka.s1838@zoho.com", "phone": "+81 90 7610 2507"},
+      {"system": "support_platform", "resource_id": "support_9538", "record_type": "SUPPORT_MESSAGE", "result": "FOUND", "customer_reference": "user_11", "ticket_id": "CS-8538", "requester_name": "Haruka Sato", "requester_email": "haruka.s1838@zoho.com"}
+    ]
+  },
+  "4e4cb259bc2010b6": {
+    "file": "images/analytics_profile_view_20260713.png",
+    "summary": "Pulse Analytics user page for Omar Darwish (user_20, analytics_7438, darwish.omar@icloud.com); 12 sessions, 2 completed orders, last activity 13 Jul 2026.",
+    "records": [
+      {"system": "analytics_platform", "resource_id": "analytics_7438", "record_type": "ANALYTICS_PROFILE", "result": "IDENTIFIABLE", "user_id": "user_20", "full_name": "Omar Darwish", "email": "darwish.omar@icloud.com"}
+    ]
+  },
+  "2c246aa5843bec60": {
+    "file": "images/backup_restore_console_20260429.png",
+    "summary": "Vault Recovery Manager archive list (26 Apr 2026 weekly snapshots). backup_9287 belongs to areed1433@gmail.com, eu-west-1, checksum verified, retention end 26 Jul 2026, no restore block shown (restorable). Other archives belong to unrelated company accounts.",
+    "records": [
+      {"system": "backup_service", "resource_id": "backup_9287", "record_type": "BACKUP_ARCHIVE", "result": "ACTIVE", "customer_email": "areed1433@gmail.com", "restore_allowed": "true", "archive_present": "true"},
+      {"system": "backup_service", "resource_id": "backup_9291", "record_type": "BACKUP_ARCHIVE", "result": "ACTIVE", "customer_email": "bluepeakco@outlook.com", "restore_allowed": "true"},
+      {"system": "backup_service", "resource_id": "backup_9288", "record_type": "BACKUP_ARCHIVE", "result": "ACTIVE", "customer_email": "miller.logistics@company.com", "restore_allowed": "true"},
+      {"system": "backup_service", "resource_id": "backup_9286", "record_type": "BACKUP_ARCHIVE", "result": "ACTIVE", "customer_email": "summit-retail@company.com", "restore_allowed": "true"}
+    ]
+  },
+  "e81fabc93ea1b5f4": {
+    "file": "images/connector_management_console_20260807.png",
+    "summary": "BridgeOps connections topology (07 Aug 2026 08:00 UTC). data_flow_1121 -> customer_analytics_warehouse, selector jain.aditi@gmail.com, continuous sync, healthy, 1,284 events/hour. data_flow_9846 -> customer_analytics_warehouse, selector lucia-torres@gmail.com, continuous, 842 events/hour.",
+    "records": [
+      {"system": "integration_service", "resource_id": "data_flow_1121", "record_type": "DATA_FLOW", "result": "ACTIVE", "subject_selector": "jain.aditi@gmail.com", "enabled": "true", "mode": "continuous_sync"},
+      {"system": "integration_service", "resource_id": "data_flow_9846", "record_type": "DATA_FLOW", "result": "ACTIVE", "subject_selector": "lucia-torres@gmail.com", "enabled": "true", "mode": "continuous_sync"}
+    ]
+  },
+  "18b95c1bd8b8956e": {
+    "file": "images/customer_export_console_20260618.png",
+    "summary": "Customer Download Center data exports. export_1260 (customer_export_1260.zip) owned by ingrid.dahl@outlook.com, status Ready, created 18 Jun 2026 06:42 UTC, expires 25 Jun 2026, includes Profile, Orders, Saved addresses. Other exports belong to staff mailboxes.",
+    "records": [
+      {"system": "export_service", "resource_id": "export_1260", "record_type": "USER_EXPORT", "result": "FOUND", "owner_email": "ingrid.dahl@outlook.com", "download_available": "true"},
+      {"system": "export_service", "resource_id": "export_1261", "record_type": "USER_EXPORT", "result": "FOUND", "owner_email": "marcus.lee@northstar.shop"},
+      {"system": "export_service", "resource_id": "export_1259", "record_type": "USER_EXPORT", "result": "FOUND", "owner_email": "sara.kim@northstar.shop"},
+      {"system": "export_service", "resource_id": "export_1258", "record_type": "USER_EXPORT", "result": "FOUND", "owner_email": "daniel.park@northstar.shop"}
+    ]
+  },
+  "68c28a72afd6ed18": {
+    "file": "images/deleted_account_reference_20260310.png",
+    "summary": "Customer Reference Registry entry user_17, badge 'Retained reference', reference type Customer key, owner Account Platform. Linked records: order ORD-20263245, support CS-3245 and CS-3378, finance FIN-7742. No name, email or phone is displayed (stable reference only).",
+    "records": [
+      {"system": "identity_service", "resource_id": "tombstone_17", "record_type": "ACCOUNT_TOMBSTONE", "result": "REDACTED", "customer_reference": "user_17", "full_name": null, "email": null, "phone": null, "email_hash": null}
+    ]
+  },
+  "51fa0e6a38f8fa36": {
+    "file": "images/marketing_profile_console.png",
+    "summary": "Audience Operations live marketing profile marketing_001 displayed for 'Soo-jin Park', sj.park@naver.com, +82 10-5837-9451; email opt-in Yes, SMS opt-in No; last refreshed 15 Sep 2026 23:40 UTC; audience Returning customers - East Asia.",
+    "records": [
+      {"system": "marketing_platform", "resource_id": "marketing_001", "record_type": "MARKETING_PROFILE", "result": "FOUND", "full_name": "Soo-jin Park", "email": "sj.park@naver.com", "phone": "+82 10-5837-9451", "email_opt_in": "true"}
+    ]
+  },
+  "96e9a191380c29b9": {
+    "file": "images/object_storage_browser_20260213.png",
+    "summary": "Nimbus Object Storage bucket northstar-customer-data / eu-west-1 / support-attachments / 2026/02 captured 13 Feb 2026 08:00 UTC. delivery_confirmation_19.pdf (684 KB, v3, uploader support-service, modified 12 Feb 18:42) is present together with other attachments.",
+    "records": [
+      {"system": "object_storage", "resource_id": "object_19", "record_type": "SUPPORT_ATTACHMENT", "result": "FOUND", "file_name": "delivery_confirmation_19.pdf", "uploaded_by": "support-service"}
+    ]
+  },
+  "75afdb0ae53a4510": {
+    "file": "images/search_index_inspector_20260901.png",
+    "summary": "Search Console customer_directory_v3 query email:g.silva76@gmail.com executed 01 Sep 2026 06:00:14 UTC, 2 hits: search_428 (Gabriel Silva, g.silva76@gmail.com, user_13, indexed 2026-09-01T05:58:21Z) and search_1874 (g.silva76.jr@gmail.com, different person).",
+    "records": [
+      {"system": "search_service", "resource_id": "search_428", "record_type": "SEARCH_INDEX_ENTRY", "result": "FOUND", "display_name": "Gabriel Silva", "email": "g.silva76@gmail.com", "customer_reference": "user_13", "observed_at": "2026-09-01T06:00:14Z"},
+      {"system": "search_service", "resource_id": "search_1874", "record_type": "SEARCH_INDEX_ENTRY", "result": "FOUND", "email": "g.silva76.jr@gmail.com", "observed_at": "2026-09-01T06:00:14Z"}
+    ]
+  },
+  "ca59f693f4e70024": {
+    "file": "images/security_audit_explorer_20260905.png",
+    "summary": "Sentinel account events for subject user_03, 18-26 Aug 2026, six signed events all integrity Valid: audit_record_003 Account closure recorded (25 Aug 04:03), audit_record_002 Session revoked, audit_record_001 Recovery challenge completed, audit_record_006 Email change confirmed, audit_record_005 Login from new device, audit_record_004 Password changed.",
+    "records": [
+      {"system": "security_service", "resource_id": "audit_record_003", "record_type": "SECURITY_AUDIT_LOG", "result": "FOUND", "subject_reference": "user_03", "event_code": "ACCOUNT_CLOSURE_RECORDED"},
+      {"system": "security_service", "resource_id": "audit_record_002", "record_type": "SECURITY_AUDIT_LOG", "result": "FOUND", "subject_reference": "user_03", "event_code": "SESSION_REVOKED"},
+      {"system": "security_service", "resource_id": "audit_record_001", "record_type": "SECURITY_AUDIT_LOG", "result": "FOUND", "subject_reference": "user_03", "event_code": "RECOVERY_CHALLENGE_COMPLETED"},
+      {"system": "security_service", "resource_id": "audit_record_006", "record_type": "SECURITY_AUDIT_LOG", "result": "FOUND", "subject_reference": "user_03", "event_code": "EMAIL_CHANGE_CONFIRMED"},
+      {"system": "security_service", "resource_id": "audit_record_005", "record_type": "SECURITY_AUDIT_LOG", "result": "FOUND", "subject_reference": "user_03", "event_code": "LOGIN_FROM_NEW_DEVICE"},
+      {"system": "security_service", "resource_id": "audit_record_004", "record_type": "SECURITY_AUDIT_LOG", "result": "FOUND", "subject_reference": "user_03", "event_code": "PASSWORD_CHANGED"}
+    ]
+  },
+  "542b7aec17e6b2f3": {
+    "file": "images/support_ticket_console_20260524.png",
+    "summary": "Helpline Console ticket CS-5034 'Where is my delivery?' (support_1034) for customer Kofi Agyeman, kagyeman8947@fastmail.com, assigned agent Maya Chen; conversation between customer, bot and agent about order ORD-20265034 (shared agent/order context).",
+    "records": [
+      {"system": "support_platform", "resource_id": "support_1034", "record_type": "SUPPORT_MESSAGE", "result": "IDENTIFIABLE", "ticket_id": "CS-5034", "requester_name": "Kofi Agyeman", "requester_email": "kagyeman8947@fastmail.com", "shared_context": "agent,order"}
+    ]
+  },
+  "abe1877efe69fb56": {
+    "file": "documents/account_history_report_20260718.pdf",
+    "summary": "Customer statement NST-2026-0718-1842 for Ingrid Dahl (user_18, ingrid.dahl@outlook.com), order ORD-20261260 smart desk lamp, Visa ending 4821, delivered 14 Jul; delivery address in Trondheim.",
+    "records": []
+  },
+  "0c58960759d4821b": {
+    "file": "documents/delivery_correction_attachment.pdf",
+    "summary": "Delivery address correction request attachment for support reference CS-4827 / support_001, uploaded by the customer Priya Raman (priya.raman@gmail.com, +91 98765 73142), order ORD-20264827; file delivery_address_correction.pdf captured 12 Sep 2026.",
+    "records": [
+      {"system": "support_platform", "resource_id": "support_001", "record_type": "SUPPORT_ATTACHMENT", "result": "FOUND", "requester_name": "Priya Raman", "requester_email": "priya.raman@gmail.com", "requester_phone": "+91 98765 73142", "uploader": "customer"}
+    ]
+  },
+  "0919c931c018565e": {
+    "file": "documents/legal_retention_register_20260529.pdf",
+    "summary": "Disputed orders and tax records register (May 2026): retained finance rows for user_08, user_12, user_17, user_21, user_24, user_29, each 'Retain until' 2033.",
+    "records": []
+  },
+  "8a6428a899dc8d07": {
+    "file": "documents/security_retention_extract.pdf",
+    "summary": "Compliance journal signed extract CJX-20260905-0630: event audit_record_003, subject user_03, account closure recorded 25 Aug 2026 04:03 UTC, retain until 25 Aug 2027, integrity seal valid.",
+    "records": [
+      {"system": "security_service", "resource_id": "audit_record_003", "record_type": "SECURITY_AUDIT_LOG", "result": "FOUND", "subject_reference": "user_03", "retention_until": "2027-08-25T04:03:00Z"}
+    ]
+  }
+}
