@@ -89,8 +89,6 @@ def reading(o: Observation) -> Dict[str, Any]:
             r.update(present=True, active=True)
         elif et == "CHECK_RESTORE_ACCESS" and "can still be restored" in d:
             r.update(present=True, active=True)
-        elif et == "LINK_RESOURCE_IDENTITY":
-            r.update(present=True)
         elif et == "SYNC_RECORD" and "Active connector repopulated" in d:
             # the connector itself was demonstrably running at that moment
             r.update(present=True, active=True)

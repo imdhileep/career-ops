@@ -183,7 +183,7 @@ def _parse_log_line(line: str) -> Optional[Dict[str, str]]:
     elif rest.startswith("<"):                                  # RFC5424 syslog
         parts = rest.split(" ", 6)
         if len(parts) >= 7:
-            rec["service"], rec["trace_id"] = parts[3], parts[4]
+            rec["service"], rec["trace_id"] = parts[2], parts[3]
             rec.update(_parse_kv(parts[6]))
     elif rest.startswith("["):                                  # bracket trace
         mm = re.match(r"\[(\w+)\]\s+\[([^\]]+)\]\s+\[([^\]]+)\]\s+([\w.]+):\s*(.*)$", rest)
@@ -404,7 +404,8 @@ def sql_observations(file_id: str, captured_at: str, text: str) -> List[Observat
     # Scope records: a full point-in-time capture of a system proves that any
     # record it does not list was absent at that instant.
     scoped = dict(scope)
-    if any(t.startswith("customer_profiles_") for t in tables) and "account_service" not in scoped:
+    full_capture = topology in ("failover_replica", "read_replica", "regional_replicas", "reporting_replica")
+    if (full_capture or any(t.startswith("customer_profiles_") for t in tables)) and "account_service" not in scoped:
         scoped["account_service"] = header_cap or captured_at
     for system, when in scoped.items():
         listed = sorted({o.resource_id for o in obs if o.system == system})
@@ -459,7 +460,34 @@ def extract_all(dataset_dir: str, usage=None) -> (List[Observation], Dict[str, E
             out.extend(media_observations(ef, facts))
     activity = load_activity(os.path.join(dataset_dir, "system_activity.csv"))
     out.extend(activity_observations(activity))
+    out.extend(alias_observations(activity, by_id, out))
     return out, by_id
+
+
+def alias_observations(activity, by_id, existing) -> List[Observation]:
+    """Data-catalog links name an alias for a resource (statement number, file
+    name, customer key).  A screenshot / PDF that shows the alias is evidence
+    about that resource even when the internal id is not printed on it."""
+    have = {(o.source_id, o.resource_id) for o in existing}
+    out = []
+    for r in activity:
+        if r["event_type"] != "LINK_RESOURCE_IDENTITY":
+            continue
+        m = re.search(r"linked (\S+) \(([^)]+)\)|confirmed (\S+) \(([^)]+)\)", r["details"])
+        if not m:
+            continue
+        rid, alias = (m.group(1), m.group(2)) if m.group(1) else (m.group(3), m.group(4))
+        if alias == rid or USER_RE.fullmatch(alias):
+            continue
+        for ef in by_id.values():
+            if not ef.text or (ef.file_id, rid) in have or not ef.path.lower().endswith((".pdf", ".png", ".jpg", ".jpeg")):
+                continue
+            if re.search(r"(?<![\w-])" + re.escape(alias) + r"(?![\w-])", ef.text):
+                keys = EMAIL_RE.findall(r["details"]) + USER_RE.findall(r["details"])
+                out.append(Observation(ef.file_id, ef.captured_at, ef.captured_at, system_for(rid), rid,
+                                       {"resource_id": rid, "alias": alias, "result": "FOUND"},
+                                       [k for k in keys if k in ef.text], "media", "alias"))
+    return out
 
 
 def media_observations(ef: EvidenceFile, facts: Dict[str, Any]) -> List[Observation]:

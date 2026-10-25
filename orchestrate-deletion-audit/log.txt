@@ -50,3 +50,25 @@ branch=main
 repo_root=/home/user/orchestrate/hackerrank-orchestrate-october26
 worktree=main
 parent_agent=none
+
+## [2026-10-25T09:40:00Z] Finish fixes, full run, evaluation, reports, packaging
+
+User Prompt (verbatim, secrets redacted):
+Continue
+
+Agent Response Summary:
+Resumed after a tool-permission outage. Fixed remaining linking bugs (syslog trace-id offset that cross-linked users, per-case workflow links, catalog aliases for PDFs/screenshots, contact-index category, absence proofs from full SQL captures), reaching 29/32 exact on the public samples with 100% status accuracy and 98.7% step F1. Generated output.csv for all 518 requests (356 INCOMPLETE, 152 COMPLETE, 10 NOT_APPLICABLE) and validated schema, sorting, step numbering, phase order and evidence rules. Wrote evaluation_report.md (metrics, ablations, 8 custom cases, failure log) and usage_report.md (0 model calls in the final run; media transcripts cached), and packaged code.zip. Push to the designated GitHub branch was rejected (no write access), so deliverables are handed to the user directly.
+
+Actions:
+* Edited code/agent/{evidence,state,auditor,workflow}.py
+* Ran python3 code/main.py and python3 code/evaluation/main.py --write
+* Wrote code/evaluation/evaluation_report.md, code/evaluation/usage_report.md
+* zip -r code.zip README.md code (excluding caches)
+
+Context:
+tool=Claude Code
+model=claude-opus-5-5
+branch=main
+repo_root=/home/user/orchestrate/hackerrank-orchestrate-october26
+worktree=main
+parent_agent=none

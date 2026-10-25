@@ -133,7 +133,7 @@ class Auditor:
     # ------------------------------------------------------------------ #
     # linking
     # ------------------------------------------------------------------ #
-    def link_resources(self, uid: str, audit_at: str, requested_at: str = "") -> Dict[str, ResourceView]:
+    def link_resources(self, uid: str, audit_at: str, requested_at: str = "", case_id: str = "") -> Dict[str, ResourceView]:
         ident = self.ids.identity(uid)
         mine = ident.keys()
         views: Dict[str, ResourceView] = {}
@@ -148,7 +148,7 @@ class Auditor:
             v = views.setdefault(o.resource_id, ResourceView(o.system, o.resource_id))
             v.link_reasons.append(f"{o.source_id}:{sorted(hit)[0]}")
         # workflow links (deletion-worker batches) computed globally
-        for rid, why in self.workflow_links.get(uid, {}).items():
+        for rid, why in self.workflow_links.get(case_id, {}).items():
             v = views.setdefault(rid, ResourceView(system_for(rid), rid))
             v.link_reasons.append(why)
         # downstream propagation via explicit relations (search doc <- account, connector -> search)
@@ -167,6 +167,10 @@ class Auditor:
         view.observations = obs
         cats = [category_of(o) for o in obs if o.kind != "activity"]
         cats = [c for c in cats if c and c != "UNKNOWN"]
+        specific = [c for c in cats if c != _default_cat(view.system)]
+        if specific:
+            # a specific classification (attachment, contact index, ...) beats the system default
+            cats = specific
         view.category = _majority(cats) or category_of(obs[0]) if obs else _default_cat(view.system)
         if not view.category or view.category == "UNKNOWN":
             view.category = _default_cat(view.system)
@@ -273,7 +277,7 @@ class Auditor:
         if not uid:
             return {"status": "INCOMPLETE", "steps": [], "trace": trace}
         audit_at = req["audit_at"]
-        views = self.link_resources(uid, audit_at, req["requested_at"])
+        views = self.link_resources(uid, audit_at, req["requested_at"], req["case_id"])
         items = []
         for rid, v in sorted(views.items()):
             self.reconstruct(v, audit_at, req["requested_at"])

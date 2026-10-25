@@ -69,7 +69,7 @@ def _offset_fits(ev: Observation, t0: datetime) -> bool:
 
 
 def build_links(cases: List[dict], ids: IdentityStore, obs: List[Observation]) -> Dict[str, Dict[str, str]]:
-    """Return {user_id: {resource_id: reason}} for workflow-derived links."""
+    """Return {case_id: {resource_id: reason}} for workflow-derived links."""
     owners = content_owners([o for o in obs if o.kind != "activity" or o.get("event_type") == "LINK_RESOURCE_IDENTITY"], ids)
     dw = [o for o in obs if o.kind == "activity" and o.get("source_system") == "deletion_worker"]
     acct = [o for o in dw if o.get("event_type") == "DELETE_RECORD" and o.get("target_system") == "account_service"]
@@ -149,7 +149,7 @@ def build_links(cases: List[dict], ids: IdentityStore, obs: List[Observation]) -
 
     links: Dict[str, Dict[str, str]] = defaultdict(dict)
     for cid, a in assigned.items():
-        links[case_user[cid]][a.resource_id] = f"workflow:{a.source_id}"
+        links[cid][a.resource_id] = f"workflow:{a.source_id}"
 
     # ---- follow-up actions without identifiers --------------------------
     starts = [(cid, _t(a.observed_at)) for cid, a in assigned.items()]
@@ -159,5 +159,5 @@ def build_links(cases: List[dict], ids: IdentityStore, obs: List[Observation]) -
         fits = [cid for cid, t0 in starts if _offset_fits(ev, t0)]
         if len(fits) == 1:
             cid = fits[0]
-            links[case_user[cid]].setdefault(ev.resource_id, f"workflow-followup:{ev.source_id}")
+            links[cid].setdefault(ev.resource_id, f"workflow-followup:{ev.source_id}")
     return links
