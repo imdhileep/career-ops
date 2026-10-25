@@ -1,10 +1,10 @@
 # Media evidence extraction prompt
 
 Used by `code/agent/media.py` for screenshots and PDFs that are not yet in
-`media_cache.json` (live call only when `ANTHROPIC_API_KEY` is set; default
-model `claude-sonnet-5-5`, override with `DELETION_AUDIT_VISION_MODEL`).
+`media_cache.json` (live call only when `ANTHROPIC_API_KEY` and
+`DELETION_AUDIT_VISION_MODEL` are set).
 The cached transcriptions shipped in `media_cache.json` were produced with
-this same prompt using Claude vision during development.
+this same prompt with a vision-language model during development.
 
 ---
 

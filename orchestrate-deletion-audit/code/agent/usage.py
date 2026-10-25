@@ -4,12 +4,10 @@ from __future__ import annotations
 import json
 from collections import defaultdict
 
-# USD per million tokens (input, output); used only for the cost estimate
-PRICES = {
-    "claude-haiku-5-5": (1.0, 5.0),
-    "claude-sonnet-5-5": (3.0, 15.0),
-    "claude-opus-5-5": (5.0, 25.0),
-}
+# USD per million tokens (input, output) for the cost estimate; set
+# DELETION_AUDIT_PRICES='{"model-id": [in, out]}' to override per model.
+import os as _os
+PRICES = json.loads(_os.environ.get("DELETION_AUDIT_PRICES", "{}"))
 
 
 class Usage:

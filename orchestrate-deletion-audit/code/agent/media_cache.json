@@ -1,5 +1,5 @@
 {
-  "_about": "Structured transcriptions of the screenshot / PDF evidence. Produced once with Claude vision (see prompts/media_extraction.md) and cached so the full run is deterministic and needs no API key. Keys are sha256 prefixes of the file bytes; if a file changes the cache misses and media.py falls back to a live model call (when ANTHROPIC_API_KEY is set) or to text-only extraction.",
+  "_about": "Structured transcriptions of the screenshot / PDF evidence. Produced once with a vision-language model (see prompts/media_extraction.md) and cached so the full run is deterministic and needs no API key. Keys are sha256 prefixes of the file bytes; if a file changes the cache misses and media.py falls back to a live model call (when ANTHROPIC_API_KEY is set) or to text-only extraction.",
   "d5c32ca5b6e1a2b4": {
     "file": "images/account_admin_console_20260926.png",
     "summary": "Customer Operations console showing live customer profile Haruka Sato (user_11, account_5762), Silver tier, email haruka.s1838@zoho.com, phone +81 90 7610 2507, two orders, support case CS-8538 / support_9538, last contact 24 Sep 2026.",

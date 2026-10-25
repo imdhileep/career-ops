@@ -2,10 +2,11 @@
 
 Resolution order for each media file:
 1. ``media_cache.json`` – structured transcription keyed by the file's sha256
-   prefix (produced with Claude vision using the prompt in
+   prefix (produced with a vision-language model using the prompt in
    ``code/prompts/media_extraction.md``).  This keeps the full run
    deterministic, offline and free.
-2. Live vision call to the Anthropic API when ``ANTHROPIC_API_KEY`` is set and
+2. Live vision call to the Anthropic API when ``ANTHROPIC_API_KEY`` and
+   ``DELETION_AUDIT_VISION_MODEL`` are set and
    the file is not cached (new or modified evidence).
 3. Text-only fallback: ``pdftotext``/``pdfplumber`` text for PDFs, from which
    resource ids and identifiers are pulled with regular expressions.
@@ -23,7 +24,7 @@ from typing import Any, Dict
 HERE = os.path.dirname(os.path.abspath(__file__))
 CACHE_PATH = os.path.join(HERE, "media_cache.json")
 PROMPT_PATH = os.path.join(os.path.dirname(HERE), "prompts", "media_extraction.md")
-VISION_MODEL = os.environ.get("DELETION_AUDIT_VISION_MODEL", "claude-sonnet-5-5")
+VISION_MODEL = os.environ.get("DELETION_AUDIT_VISION_MODEL", "")
 
 _cache = None
 
@@ -81,7 +82,7 @@ def _regex_records(text: str) -> list:
 
 def _live_vision(path: str, usage=None) -> Dict[str, Any]:
     key = os.environ.get("ANTHROPIC_API_KEY")
-    if not key:
+    if not key or not VISION_MODEL:
         return {}
     try:
         import anthropic  # type: ignore

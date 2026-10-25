@@ -2,8 +2,7 @@
 
 Fallback used by `code/agent/intent.py` only when the deterministic
 multilingual rules find neither a deletion cue nor a non-deletion cue and
-`ANTHROPIC_API_KEY` is set (default model `claude-haiku-5-5`, override with
-`DELETION_AUDIT_TEXT_MODEL`). In the supplied dataset every request is decided
+`ANTHROPIC_API_KEY` and `DELETION_AUDIT_TEXT_MODEL` (model id) are set. In the supplied dataset every request is decided
 by the rules, so this prompt was not needed for the final run.
 
 ---

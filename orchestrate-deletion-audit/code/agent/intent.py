@@ -59,7 +59,8 @@ def classify(text: str, usage=None) -> dict:
 
 
 def _llm_classify(text: str, usage=None):
-    if not os.environ.get("ANTHROPIC_API_KEY"):
+    model = os.environ.get("DELETION_AUDIT_TEXT_MODEL", "")
+    if not os.environ.get("ANTHROPIC_API_KEY") or not model:
         return None
     try:
         import anthropic  # type: ignore
@@ -67,7 +68,6 @@ def _llm_classify(text: str, usage=None):
         return None
     here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     prompt = open(os.path.join(here, "prompts", "intent_classification.md"), encoding="utf-8").read()
-    model = os.environ.get("DELETION_AUDIT_TEXT_MODEL", "claude-haiku-5-5")
     msg = anthropic.Anthropic().messages.create(
         model=model, max_tokens=200,
         messages=[{"role": "user", "content": prompt.replace("{{REQUEST_TEXT}}", text)}])

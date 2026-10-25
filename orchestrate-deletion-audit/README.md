@@ -23,9 +23,9 @@ paths switch on automatically when `ANTHROPIC_API_KEY` is set:
 
 | Env var | Effect |
 |---|---|
-| `ANTHROPIC_API_KEY` | enables live Claude vision for screenshots/PDFs missing from the cache, and the LLM fallback for ambiguous request intent |
-| `DELETION_AUDIT_VISION_MODEL` | vision model (default `claude-sonnet-5-5`) |
-| `DELETION_AUDIT_TEXT_MODEL` | intent fallback model (default `claude-haiku-5-5`) |
+| `ANTHROPIC_API_KEY` | enables a live vision-model call for screenshots/PDFs missing from the cache, and the LLM fallback for ambiguous request intent |
+| `DELETION_AUDIT_VISION_MODEL` | vision model id (required for live vision calls) |
+| `DELETION_AUDIT_TEXT_MODEL` | intent fallback model id (required for the LLM fallback) |
 
 ## Architecture
 
@@ -35,8 +35,8 @@ dataset/ ──► evidence.py ──► Observation[] ──► workflow.py (gl
               │  JSON exports / snapshot bundles               │  identity.py current + historical identifiers
               │  SQLite snapshots (primary + replicas, scopes) │  link        content keys + workflow + relations
               │  text handovers, activity stream               │  state.py    state at audit_at, evidence to cite
-              └─ media.py: PDFs (text) + screenshots (Claude    │  policy      deletion_rules.csv -> treatment
-                 vision transcripts cached in media_cache.json) └─ planner     ordered FINDING/REMEDIATION/VERIFICATION
+              └─ media.py: PDFs (text) + screenshots (VLM       │  policy      deletion_rules.csv -> treatment
+                 transcripts cached in media_cache.json) └─ planner     ordered FINDING/REMEDIATION/VERIFICATION
 ```
 
 1. **Evidence normalisation (`code/agent/evidence.py`, `media.py`)** – every
@@ -46,7 +46,7 @@ dataset/ ──► evidence.py ──► Observation[] ──► workflow.py (gl
    start line. SQL captures are executed in in-memory SQLite; every table
    (primary, regional/reporting/failover replicas) yields observations, and a
    full capture of a store also yields a *scope* record so absence-by-omission
-   can be proven. Screenshots were transcribed once with Claude vision using
+   can be proven. Screenshots were transcribed once with a vision-language model using
    `code/prompts/media_extraction.md`; transcripts are cached by file hash.
 2. **Intent (`intent.py`)** – multilingual rule set (EN/ES/PT/FR/JA/KO …) with
    explicit non-deletion scoping cues (access, export, correction, marketing
@@ -98,7 +98,7 @@ token/cost accounting in `code/evaluation/usage_report.md`.
 code/main.py                    entry point (writes output.csv)
 code/agent/evidence.py          artifact parsers -> observations (+ scopes)
 code/agent/media.py             PDF text + screenshot transcripts (cache / live vision)
-code/agent/media_cache.json     cached Claude-vision transcripts keyed by sha256
+code/agent/media_cache.json     cached vision-model transcripts keyed by sha256
 code/agent/identity.py          identity resolution (current + history)
 code/agent/intent.py            request intent classification
 code/agent/workflow.py          deletion-worker workflow linking (global assignment)
