@@ -21,6 +21,8 @@ concurrency:
 jobs:
   validate:
     name: Validate registry entries
+    # Fork guard (imdhileep/career-ops): upstream maintainer check, skipped on forks.
+    if: github.repository == 'career-ops-hq/career-ops'
     runs-on: ubuntu-latest
     steps:
       # fetch-depth: 0 so the "One plugin per PR" diff below has the base

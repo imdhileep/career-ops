@@ -1,5 +1,7 @@
 // Kanban grouping for the Pipeline board view. Pure, so `node --test` covers it.
-import { canonStatus } from "./status-alias.mjs";
+// statusToken is the tabs' normalizer (strips dates, bold, aliases), so a
+// card always sits in the column matching the tab that counts it.
+import { statusToken } from "./pipeline-sankey.mjs";
 
 export const OTHER_COLUMN = "Other";
 
@@ -20,7 +22,7 @@ export function boardColumns(rows, states) {
   /** @type {T[]} */
   const other = [];
   for (const row of rows) {
-    const label = byToken.get(canonStatus(row.status ?? ""));
+    const label = byToken.get(statusToken(row.status));
     if (label) groups.get(label).push(row);
     else other.push(row);
   }
@@ -39,7 +41,7 @@ export function boardColumns(rows, states) {
  */
 export function dropStatus(current, target, states) {
   if (target === OTHER_COLUMN || !states.includes(target)) return null;
-  return canonStatus(current ?? "") === target.toUpperCase() ? null : target;
+  return statusToken(current) === target.toUpperCase() ? null : target;
 }
 
 /** Board vs table, from `?view=`. Anything else is the table, the default. */

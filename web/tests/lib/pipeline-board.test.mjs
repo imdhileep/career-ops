@@ -20,9 +20,9 @@ test("boardColumns puts each row under its canonical state, keeping order", () =
 
 test("boardColumns adds an Other column only for unknown statuses", () => {
   assert.equal(boardColumns([{ status: "Applied" }], STATES).length, STATES.length);
-  const cols = boardColumns([{ status: "weird" }, { status: "" }], STATES);
+  const cols = boardColumns([{ status: "weird" }], STATES);
   assert.equal(cols.at(-1).status, OTHER_COLUMN);
-  assert.equal(cols.at(-1).rows.length, 2);
+  assert.equal(cols.at(-1).rows.length, 1);
 });
 
 test("boardColumns resolves aliases (no aplicar -> SKIP)", () => {
@@ -42,4 +42,16 @@ test("pipelineLayout defaults to table", () => {
   assert.equal(pipelineLayout(["board"]), "board");
   assert.equal(pipelineLayout(null), "table");
   assert.equal(pipelineLayout("kanban"), "table");
+});
+
+// Mirrors CANONICAL_STATES in src/lib/format.ts (templates/states.yml).
+const ALL_STATES = ["Evaluated", "Applied", "Responded", "Assessment", "Interview", "Offer", "Hired", "Rejected", "Discarded", "SKIP"];
+
+test("board columns agree with the pipeline tabs for decorated legacy statuses", async () => {
+  const { rowOnPipelineTab } = await import("../../src/lib/pipeline-navigation.mjs");
+  for (const status of ["Applied 2026-08-20", "Aplicado 2026-08-20", "**Interview**", "", "no aplicar"]) {
+    const col = boardColumns([{ status }], ALL_STATES).find((c) => c.rows.length === 1);
+    assert.ok(rowOnPipelineTab(status, col.status.toUpperCase()), `${JSON.stringify(status)} -> ${col.status}`);
+  }
+  assert.equal(dropStatus("Applied 2026-08-20", "Applied", STATES), null);
 });

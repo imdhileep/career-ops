@@ -134,7 +134,8 @@ jobs:
   upgrade-gate:
     name: Upgrade regression gate
     # Skipped in the merge queue for cv-visual's reason above.
-    if: github.event_name != 'merge_group'
+    # Fork guard (imdhileep/career-ops): needs upstream release tags, skipped on forks.
+    if: github.event_name != 'merge_group' && github.repository == 'career-ops-hq/career-ops'
     runs-on: ubuntu-latest
     # About 3 minutes. Limited for the test job's reason.
     timeout-minutes: 20

@@ -19,6 +19,8 @@ concurrency:
 
 jobs:
   validate:
+    # Fork guard (imdhileep/career-ops): upstream maintainer check, skipped on forks.
+    if: github.repository == 'career-ops-hq/career-ops'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
