@@ -3,13 +3,15 @@
 import { startTransition, useCallback, useDeferredValue, useEffect, useMemo, useOptimistic, useRef, useState, useTransition, type MouseEvent } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Search, ChevronsUpDown, X, Compass, ArrowRight, ExternalLink, Download } from "lucide-react";
+import { Search, ChevronsUpDown, X, Compass, ArrowRight, ExternalLink, Download, Columns3, Table2 } from "lucide-react";
 import type { Application, InboxJob } from "@/lib/career-ops";
 import { Badge } from "@/components/ui/badge";
 import { CompanyLogo } from "@/components/company-logo";
 import { CANONICAL_STATES, scoreNum, scoreTone } from "@/lib/format";
 import { StatusSelect } from "@/components/status-select";
-import { applicationKey, applySavedStatus, saveStatuses } from "@/lib/pipeline-status.mjs";
+import { applicationKey, applySavedStatus, saveStatus, saveStatuses } from "@/lib/pipeline-status.mjs";
+import { PipelineBoard } from "@/components/pipeline/pipeline-board";
+import { pipelineLayout } from "@/lib/pipeline-board.mjs";
 import { InboxTriage } from "@/components/inbox/inbox-triage";
 import { cn } from "@/lib/cn";
 import { companyPresentation, companySearchText } from "@/lib/company-presentation.mjs";
@@ -74,6 +76,7 @@ export function PipelineView({
   // the table identically (no useState mirror → no desync).
   const tab: Tab = pipelineTab(params.get("tab"));
   const visibleTab = isPending && pendingTab ? pendingTab : tab;
+  const layout = pipelineLayout(params.get("view"));
   const pMin = parseFloat(params.get("min") ?? "");
   const minFilter: number | null = Number.isFinite(pMin) ? pMin : null;
   const pSort = params.get("sort") ?? "";
@@ -248,6 +251,22 @@ export function PipelineView({
     ) as Application[];
   }, [visibleApplications, tab, deferredQ, sort, minFilter]);
 
+  const [boardError, setBoardError] = useState("");
+  async function moveOnBoard(row: Application, next: string) {
+    setBoardError("");
+    try {
+      const status = await saveStatus(row.n, row.status, next);
+      if (!status) return;
+      setAnnouncement(`Application #${row.n} moved to ${status}.`);
+      startTransition(() => {
+        showSavedStatus({ key: applicationKey(row), status });
+        router.refresh();
+      });
+    } catch (e) {
+      setBoardError(`#${row.n} not moved: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+
   const filteredKeys = filtered.map(applicationKey);
   const selectedRows = filtered.filter((r) => selected.has(applicationKey(r)));
   const allSelected = filteredKeys.length > 0 && filteredKeys.every((k) => selected.has(k));
@@ -305,6 +324,24 @@ export function PipelineView({
                 placeholder="Search company or role…"
                 className="w-full rounded-md border border-border bg-surface/60 py-2 pl-9 pr-3 text-sm outline-none transition-colors placeholder:text-faint focus:border-brand/50 focus-visible:ring-2 focus-visible:ring-brand/40"
               />
+            </div>
+            <div role="group" aria-label="Layout" className="inline-flex overflow-hidden rounded-md border border-border">
+              {(["table", "board"] as const).map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  aria-pressed={layout === v}
+                  title={v === "board" ? "Board: drag cards between status columns" : "Table view"}
+                  onClick={() => setParams(v === "board" ? { view: "board", tab: "ALL" } : { view: null })}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 px-2.5 py-2 text-sm transition-colors max-sm:min-h-[44px]",
+                    layout === v ? "bg-brand-soft text-brand-text" : "bg-surface/60 text-muted hover:text-foreground",
+                  )}
+                >
+                  {v === "board" ? <Columns3 aria-hidden="true" className="size-4" /> : <Table2 aria-hidden="true" className="size-4" />}
+                  <span className="max-sm:sr-only">{v === "board" ? "Board" : "Table"}</span>
+                </button>
+              ))}
             </div>
             <button
               type="button"
@@ -483,6 +520,16 @@ export function PipelineView({
               <InboxTriage inbox={inbox} />
               {inbox.length === 0 && <InboxEmpty tracked={visibleApplications.length} />}
             </>
+          )}
+        </>
+      ) : layout === "board" ? (
+        /* ── Kanban board: same rows as the table, one column per status ── */
+        <>
+          {boardError && <p role="alert" className="mt-3 text-xs text-red-500">{boardError}</p>}
+          {filtered.length > 0 ? (
+            <PipelineBoard rows={filtered} detailQuery={detailQuery} onNavigate={syncTypedSearch} onMove={moveOnBoard} />
+          ) : (
+            <p className="mt-6 text-sm text-muted">No tracked applications match these filters.</p>
           )}
         </>
       ) : isPending || filtered.length > 0 ? (

@@ -312,3 +312,4 @@ data/applications.html
 __pycache__/
 data/apply-worklist.csv
 data/applied-status.tsv
+!config/local-paths.txt
