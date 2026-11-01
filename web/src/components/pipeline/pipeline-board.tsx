@@ -74,7 +74,9 @@ export function PipelineBoard({
             onDragLeave={droppable ? () => setOverColumn((c) => (c === col.status ? null : c)) : undefined}
             onDrop={droppable ? (e) => onDrop(e, col.status) : undefined}
             className={cn(
-              "flex w-64 shrink-0 flex-col rounded-2xl border border-border bg-surface/40",
+              "flex shrink-0 flex-col rounded-2xl border border-border bg-surface/40 transition-[width]",
+              // Empty columns stay droppable but narrow, so more stages fit on screen.
+              col.rows.length > 0 || overColumn === col.status ? "w-60" : "w-40",
               overColumn === col.status && "border-brand/60 bg-brand-soft",
             )}
           >
