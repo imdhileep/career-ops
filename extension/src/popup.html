@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>career-ops</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <span class="logo">co</span>
+    <span class="brand">career-ops</span>
+    <a id="dashboard" class="link" href="#" title="Open your dashboard">Dashboard ↗</a>
+  </header>
+
+  <section id="offline" class="notice" hidden>
+    <strong>Can't reach your career-ops app.</strong>
+    <p id="offline-detail"></p>
+    <a href="#" id="open-options" class="link">Connection settings</a>
+  </section>
+
+  <main id="main" hidden>
+    <div class="job">
+      <div id="title" class="title">Reading this page…</div>
+      <div id="meta" class="meta"></div>
+    </div>
+
+    <div class="scores">
+      <div class="score">
+        <div class="label">Skills match</div>
+        <div id="coverage" class="value">–</div>
+      </div>
+      <div class="score">
+        <div class="label">Title fit</div>
+        <div id="fit" class="value">–</div>
+      </div>
+    </div>
+    <div id="missing" class="missing" hidden></div>
+    <p id="hint" class="hint" hidden></p>
+
+    <div class="actions">
+      <button id="save" class="primary">Save to pipeline</button>
+      <button id="fill">Autofill form</button>
+    </div>
+    <p id="status" class="status" role="status"></p>
+    <p class="fine">Autofill never submits. Review every field and press Submit yourself.</p>
+  </main>
+
+  <script src="popup.js" type="module"></script>
+</body>
+</html>

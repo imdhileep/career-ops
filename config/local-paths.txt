@@ -1,0 +1,6 @@
+# Fork-local files (imdhileep/career-ops). Declared user-owned so
+# update-system.mjs never overwrites or deletes them and the
+# SYSTEM_PATHS coverage check stays green in CI.
+daily-scan.sh
+tools/
+extension/

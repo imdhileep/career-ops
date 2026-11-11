@@ -87,7 +87,7 @@ def parse_report(fp):
     h1 = H1_RE.search(txt)
     company, role = "", ""
     if h1:
-        parts = re.split(r"\s+[—-]\s+", h1.group(1), maxsplit=1)
+        parts = re.split(r"\s+(?:—|–|--|-|\|)\s+", h1.group(1), maxsplit=1)
         company = parts[0].strip()
         role = parts[1].strip() if len(parts) > 1 else ""
 
