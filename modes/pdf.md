@@ -18,8 +18,9 @@
 12. Generate full HTML from template + personalized content
 13. Read `name` from `config/profile.yml` → normalize to kebab-case lowercase (e.g. "John Doe" → "john-doe") → `{candidate}`
 14. Write HTML to `/tmp/cv-{candidate}-{company}.html`
-15. Execute: `node generate-pdf.mjs /tmp/cv-{candidate}-{company}.html output/cv-{candidate}-{company}-{YYYY-MM-DD}.pdf --format={letter|a4}`
-16. Report: PDF path, number of pages, keyword coverage %
+15. **Claim check (zero tokens):** `node verify-cv-claims.mjs /tmp/cv-{candidate}-{company}.html`. Exit 2 means a number or metric in the HTML does not appear in `cv.md` / `article-digest.md` / `config/profile.yml`. Fix the HTML (use the source figure, or drop the claim) and re-run until it exits 0. NEVER edit the source files to make the check pass.
+16. Execute: `node generate-pdf.mjs /tmp/cv-{candidate}-{company}.html output/cv-{candidate}-{company}-{YYYY-MM-DD}.pdf --format={letter|a4}`
+17. Report: PDF path, number of pages, keyword coverage %, claim check result
 
 ## ATS Rules (clean parsing)
 

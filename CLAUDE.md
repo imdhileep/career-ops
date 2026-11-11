@@ -66,6 +66,7 @@ AI-powered job search automation built on Claude Code: pipeline tracking, offer 
 | `data/follow-ups.md` | Follow-up history tracker |
 | `scan.mjs` | Zero-token portal scanner — hits Greenhouse/Ashby/Lever APIs directly, zero LLM cost |
 | `check-liveness.mjs` | Job posting liveness checker |
+| `verify-cv-claims.mjs` | Zero-token claim checker — flags CV metrics not in cv.md/article-digest.md and report quotes not found verbatim in the cited file |
 | `liveness-core.mjs` | Shared liveness logic (expired signals win over generic Apply text) |
 | `reports/` | Evaluation reports (format: `{###}-{company-slug}-{YYYY-MM-DD}.md`). Blocks A-F + G (Posting Legitimacy), plus `## Machine Summary` YAML for downstream scripts. Header includes `**Legitimacy:** {tier}`. |
 

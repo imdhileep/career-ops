@@ -507,6 +507,60 @@ try {
   fail(`always_allow tests crashed: ${e.message}`);
 }
 
+// ── 12. CLAIM CHECKER (verify-cv-claims.mjs) ────────────────────
+
+console.log('\n12. Claim checker — metrics and quotes vs source');
+
+try {
+  const { checkClaims, extractMetrics, htmlToText, texToText } =
+    await import(pathToFileURL(join(ROOT, 'verify-cv-claims.mjs')).href);
+
+  const cv = [
+    '- Cut infra cost by 40% ($2M/year) across 1,200 services (2019–2023)',
+    '- Led team of 12 engineers; shipped 3x faster on AWS S3 with GPT-4o',
+    '- 170+ hours saved per month',
+  ].join('\n');
+  const sources = [{ name: 'cv.md', content: cv }];
+
+  const honest = '<html><head><style>body{margin:0.6in}</style></head><body>'
+    + '<li>Cut cost 40% (&dollar;2 million/yr) over 1200 services, 2019&ndash;2023</li>'
+    + '<li>Led 12 engineers, 3&times; faster on S3 with GPT-4o; 170 hours saved</li></body></html>';
+  const r1 = checkClaims({ name: 'cv.html', content: honest }, sources);
+  if (r1.problems.length === 0) pass('Reworded-but-true CV passes (2M = 2 million, 1,200 = 1200, 3x = 3×)');
+  else fail(`Honest CV flagged: ${r1.problems.join('; ')}`);
+
+  const inflated = honest.replace('</body>', '<li>Grew revenue 65% and cut churn 5x</li></body>');
+  const r2 = checkClaims({ name: 'cv.html', content: inflated }, sources);
+  if (r2.problems.length === 2 && r2.problems.every(p => p.startsWith('METRIC NOT IN SOURCE')))
+    pass('Invented metrics (65%, 5x) are flagged');
+  else fail(`Expected 2 invented metrics, got: ${JSON.stringify(r2.problems)}`);
+
+  const tex = '\\documentclass[10pt]{article}\\begin{document}\\vspace{-4pt}'
+    + '\\resumeItem{Cut cost by 40\\% across 1{,}200 services} % 99 comment\\end{document}';
+  const r3 = checkClaims({ name: 'cv.tex', content: tex }, sources);
+  if (r3.problems.length === 0) pass('LaTeX: escapes, {,} separators, spacing and comments handled');
+  else fail(`LaTeX false positives: ${r3.problems.join('; ')}`);
+
+  const templateNoise = [
+    ...extractMetrics(htmlToText(readFile('templates/cv-template.html'))),
+    ...extractMetrics(texToText(readFile('templates/cv-template.tex'))),
+  ];
+  if (templateNoise.length === 0) pass('CV templates produce no false-positive metrics');
+  else fail(`Template noise: ${templateNoise.map(t => t.raw).join(', ')}`);
+
+  const report = '| Cost | "Cut infra cost by 40% ($2M/year)" — cv.md |\n'
+    + '| Lead | "Led team of 20 engineers" — cv.md |\n'
+    + '| Gone | "anything at all" — missing.md |';
+  const r4 = checkClaims({ name: 'r.md', content: report }, [], {
+    quotesOnly: true, readSource: p => (p === 'cv.md' ? cv : null),
+  });
+  const want = ['QUOTE NOT IN SOURCE -> "Led team of 20 engineers" (cv.md)', 'QUOTE CITES MISSING FILE -> missing.md'];
+  if (JSON.stringify(r4.problems) === JSON.stringify(want)) pass('Report quotes: fake quote and missing file flagged, real quote passes');
+  else fail(`Quote check mismatch: ${JSON.stringify(r4.problems)}`);
+} catch (e) {
+  fail(`claim checker tests crashed: ${e.message}`);
+}
+
 // ── SUMMARY ─────────────────────────────────────────────────────
 
 console.log('\n' + '='.repeat(50));

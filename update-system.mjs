@@ -60,6 +60,7 @@ const SYSTEM_PATHS = [
   'dedup-tracker.mjs',
   'normalize-statuses.mjs',
   'cv-sync-check.mjs',
+  'verify-cv-claims.mjs',
   'update-system.mjs',
   'scan.mjs',
   'providers/',

@@ -25,6 +25,8 @@ Execute the same as the `oferta` mode (read `modes/oferta.md` for all A-F blocks
 Save the full evaluation in `reports/{###}-{company-slug}-{YYYY-MM-DD}.md` (see format in `modes/oferta.md`).
 Include Block G in the saved report. Add **URL:** {url} and **Legitimacy:** {tier} to the report header.
 
+Then run `node verify-cv-claims.mjs --quotes-only reports/{###}-{company-slug}-{YYYY-MM-DD}.md`. If it exits 2, replace each flagged citation with the exact line from the cited file (or remove the claim) and re-run until it exits 0.
+
 ## Step 3 — Generate PDF
 
 Read `config/profile.yml`. Check `cv.output_format`:

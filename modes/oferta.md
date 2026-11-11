@@ -24,6 +24,8 @@ Table with:
 
 Read `cv.md`. Create a table with each JD requirement mapped to exact lines in the CV.
 
+Cite each CV line verbatim as `"exact text" — cv.md` (or `— article-digest.md`). Copy the text, don't paraphrase it: `verify-cv-claims.mjs --quotes-only` checks every citation word for word against the cited file.
+
 **Adapted to the archetype:**
 - If FDE → prioritize delivery speed and client-facing proof points
 - If SA → prioritize system design and integrations

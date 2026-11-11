@@ -10,6 +10,7 @@
     "merge": "node merge-tracker.mjs",
     "pdf": "node generate-pdf.mjs",
     "sync-check": "node cv-sync-check.mjs",
+    "verify-claims": "node verify-cv-claims.mjs",
     "update:check": "node update-system.mjs check",
     "update": "node update-system.mjs apply",
     "rollback": "node update-system.mjs rollback",
