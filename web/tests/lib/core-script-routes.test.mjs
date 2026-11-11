@@ -150,10 +150,54 @@ test("the six analytics routes launch with process.execPath and windowsHide", as
   }
 });
 
+// ---------------------------------------------------------------------------
+// companion (browser extension): one launch of jd-skill-gap per match, and a
+// silent child is "no score", never 0%.
+// ---------------------------------------------------------------------------
+
+const companionPost = (job) =>
+  new Request("http://localhost/api/companion", { method: "POST", body: JSON.stringify({ job }) });
+const JOB = { url: "https://boards.example.test/acme/jobs/1", title: "Backend Engineer", company: "Acme", jdText: "## Requirements\n- Go\n- Rust\n" };
+
+test("companion launches jd-skill-gap with process.execPath and windowsHide", async () => {
+  // Given a CV and a skill-gap script that answers
+  writeFileSync(join(dataRoot, "cv.md"), "# CV\n\n## Skills\nGo\n");
+  standIn("jd-skill-gap", 'console.log(JSON.stringify({ existing: ["Go"], supportedByResume: [], gap: ["Rust"] }));');
+  const { POST } = await route("companion");
+
+  // When the extension asks for a match
+  const { body, launches: made } = await call(POST, companionPost(JOB));
+
+  // Then the script ran once, safely, and its answer became the coverage
+  assert.equal(made.length, 1);
+  assert.equal(made[0].script, join(codeRoot, "jd-skill-gap.mjs"));
+  assert.equal(made[0].file, process.execPath);
+  assert.equal(made[0].options?.windowsHide, true);
+  assert.equal(body.coverage.pct, 50);
+  assert.deepEqual(body.coverage.missing, ["Rust"]);
+});
+
+test("companion reports no score, not 0%, when jd-skill-gap dies silently", async () => {
+  writeFileSync(join(dataRoot, "cv.md"), "# CV\n");
+  standIn("jd-skill-gap", "process.exit(1);");
+  const { POST } = await route("companion");
+  const { body } = await call(POST, companionPost(JOB));
+  assert.equal(body.coverage.pct, null);
+});
+
+test("companion rejects a job without a usable URL and launches nothing", async () => {
+  standIn("jd-skill-gap", 'console.log("{}");');
+  const { POST } = await route("companion");
+  const res = await call(POST, companionPost({ ...JOB, url: "javascript:alert(1)" }));
+  assert.equal(res.launches.length, 0);
+  assert.match(res.body.error, /http/);
+});
+
 // Every route that calls execFile, found by reading the route tree. The two
 // tests above drive exactly these; a route added later that execFiles a core
 // script fails here until it is driven there too.
 const DRIVEN_ROUTES = [
+  "companion",
   "company-history",
   "doctor",
   "followups",

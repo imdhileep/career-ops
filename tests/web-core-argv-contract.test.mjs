@@ -145,6 +145,16 @@ const CALL_SITES = [
     probe: 'run',
   },
   {
+    // Browser-extension companion (fork-local, extension/). The route writes
+    // the page's job text to a temp .md file and passes that file as the only
+    // argument; the fixture report is a markdown file with a JD, so it stands
+    // in for that temp file. JSON is the script's default output.
+    source: 'web/src/app/api/companion/route.ts',
+    script: 'jd-skill-gap.mjs',
+    args: ['{{report}}'],
+    probe: 'run',
+  },
+  {
     source: 'web/src/app/api/upskill/route.ts',
     script: 'upskill.mjs',
     // No flags: upskill.mjs prints JSON by default and rejects a --json flag,

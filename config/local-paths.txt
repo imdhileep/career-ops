@@ -3,3 +3,4 @@
 # SYSTEM_PATHS coverage check stays green in CI.
 daily-scan.sh
 tools/
+extension/
